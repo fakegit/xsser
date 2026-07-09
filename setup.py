@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2021 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -22,7 +22,6 @@ Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 from setuptools import setup
 import os
 data_files = []
-image_files = []
 doc_files = []
 gtk_doc_files = []
 for afile in os.listdir('doc'):
@@ -39,13 +38,28 @@ gtk_files = ['gtk/xsser.ui']
 gtk_app_files = ['gtk/xsser.desktop']
 setup(
     name = "xsser",
-    version = "1.8.4",
+    version = "1.9",
+    description = "Cross Site Scripter (XSSer): automatic framework to detect, exploit and report XSS vulnerabilities in web-based applications",
+    author = "psy",
+    author_email = "epsylon@riseup.net",
+    url = "https://xsser.03c8.net",
+    license = "GPLv3",
+    python_requires = ">=3.9",
+    install_requires = ['beautifulsoup4>=4.12.3', 'pycurl>=7.45.3', 'selenium>=4.20.0', 'ddgs>=9.0.0', 'fpdf2>=2.8.1'],
     packages = ['core', 'core.fuzzing', 'core.post', 'core.driver'],
-    data_files = [('/usr/share/doc/xsser/', doc_files), 
+    data_files = [('/usr/share/doc/xsser/', doc_files),
                   ('/usr/share/xsser/gtk/images/', data_files),
                   ('/usr/share/xsser/gtk/docs/', gtk_doc_files),
                   ('/usr/share/applications/', gtk_app_files),
                   ('/usr/share/xsser/gtk/', gtk_files)],
     scripts = ['xsser'],
-    test_suite = "tests"
+    test_suite = "tests",
+    classifiers = [
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "Operating System :: POSIX :: Linux",
+        "Environment :: Console",
+        "Intended Audience :: Information Technology",
+        "Topic :: Security",
+    ],
 )

@@ -1,4 +1,4 @@
-  ![XSSer](https://xsser.03c8.net/xsser/thehive1.png "XSSer")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_banner.png "XSSer v1.9 - Bl4ck Swarm!")
 
 ----------
 
@@ -10,24 +10,31 @@
 
   It provides several options to try to bypass certain filters and various special techniques for code injection.
 
-  XSSer has pre-installed [ > 1300 XSS ] attacking vectors and can bypass-exploit code on several browsers/WAFs:
+  Key features:
 
-     [PHPIDS]: PHP-IDS
-     [Imperva]: Imperva Incapsula WAF
-     [WebKnight]: WebKnight WAF
-     [F5]: F5 Big IP WAF
+     - [ > 1500 ] pre-installed XSS attacking vectors (automatic fuzzing).
+     - Validation: each finding is verified for real executability. A context-aware engine tells apart executable contexts (HTML, JS, event handlers, javascript:/data: URIs) from harmless reflections, with an optional headless-browser reverse connection (--reverse-check) to confirm findings and cut false positives.
+     - Targeting: URL, file, stdin/pipe, raw HTTP request (-r), 'dorking' (multiple engines) and crawler.
+     - Injection: GET/POST, Cookie/User-Agent/Referer, DOM and HTTP Response Splitting.
+     - Evasion: per-WAF bypassers + character-encoding bypassers; proxy/Tor; client-certificate auth.
+     - Reporting: PDF (professional), XML and JSON (for CI / pipelines).
+
+  It can also bypass-exploit code on several WAFs:
+
+     [Cloudflare]: Cloudflare WAF
+     [Akamai]: Akamai (Kona / App & API Protector)
+     [AWS]: AWS WAF
+     [Azure]: Azure Front Door WAF
+     [Imperva]: Imperva (Incapsula / Cloud WAF)
+     [F5]: F5 BIG-IP ASM / Advanced WAF
      [Barracuda]: Barracuda WAF
-     [ModSec]: Mod-Security
-     [QuickDF]: QuickDefense
-     [Sucuri]: SucuriWAF 
-     [Chrome]: Google Chrome
-     [IE]: Internet Explorer
-     [FF]: Mozilla's Gecko rendering engine, used by Firefox/Iceweasel
-     [NS-IE]: Netscape in IE rendering engine mode
-     [NS-G]: Netscape in the Gecko rendering engine mode
-     [Opera]: Opera Browser
+     [ModSec]: Mod-Security + OWASP CRS v3
+     [Wordfence]: Wordfence (WordPress)
+     [Sucuri]: Sucuri (CloudProxy)
+     [FortiWeb]: Fortinet FortiWeb
+     [WebKnight]: AQTRONIX WebKnight
 
-  ![XSSer](https://xsser.03c8.net/xsser/url_generation.png "XSSer URL Generation Schema")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_options.png "XSSer v1.9 - WAF Bypassers & Encoders")
 
 ----------
 
@@ -39,17 +46,18 @@ XSSer runs on many platforms. It requires Python (3.x) and the following librari
     - python3-bs4 - error-tolerant HTML parser for Python 3
     - python3-geoip - Python3 bindings for the GeoIP IP-to-country resolver library
     - python3-gi - Python 3 bindings for gobject-introspection libraries
-    - python3-cairocffi - cffi-based cairo bindings for Python (Python3)
     - python3-selenium - Python3 bindings for Selenium
     - firefoxdriver - Firefox WebDriver support
+    - ddgs - DuckDuckGo search library (used by the 'dorking' engine)
+    - fpdf2 - PDF generation library (used by the '--pdf' report exporter)
 
 On Debian-based systems (ex: Ubuntu), run: 
 
-    sudo apt-get install python3-pycurl python3-bs4 python3-geoip python3-gi python3-cairocffi python3-selenium firefoxdriver
+    sudo apt-get install python3-pycurl python3-bs4 python3-geoip python3-gi python3-selenium firefoxdriver python3-fpdf2
 
 On other systems such as: Kali, Ubuntu, ArchLinux, ParrotSec, Fedora, etc... also run:
 
-    sudo pip3 install pycurl bs4 pygeoip gobject cairocffi selenium
+    sudo pip3 install pycurl bs4 pygeoip PyGObject selenium ddgs fpdf2
 
 ####  Source libs:
 
@@ -58,8 +66,9 @@ On other systems such as: Kali, Ubuntu, ArchLinux, ParrotSec, Fedora, etc... als
    * PyBeautifulSoup4: https://pypi.org/project/beautifulsoup4/
    * PyGeoIP: https://pypi.org/project/pygeoip/
    * PyGObject: https://pypi.org/project/gobject/
-   * PyCairocffi: https://pypi.org/project/cairocffi/
    * PySelenium: https://pypi.org/project/selenium/
+   * ddgs: https://pypi.org/project/ddgs/
+   * fpdf2: https://pypi.org/project/fpdf2/
 
 ----------
 
@@ -72,19 +81,17 @@ in the [LICENSE](./docs/LICENSE) file.
 
 ####  Screenshots:
 
-  ![XSSer](https://xsser.03c8.net/xsser/thehive2.png "XSSer Shell")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_shell.png "XSSer Shell")
 
-  ![XSSer](https://xsser.03c8.net/xsser/thehive3.png "XSSer Manifesto")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_dorking.png "XSSer Dorking (multiple engines)")
 
-  ![XSSer](https://xsser.03c8.net/xsser/thehive4.png "XSSer Configuration")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_gui.png "XSSer GTK GUI")
 
-  ![XSSer](https://xsser.03c8.net/xsser/thehive5.png "XSSer Bypassers")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_gui_waf.png "XSSer GUI - Anti-antiXSS/IDS WAF Bypassers")
 
-  ![XSSer](https://xsser.03c8.net/xsser/thehive6.png "XSSer [HTTP GET] [LOCAL] Reverse Exploit")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_gui_bypasser.png "XSSer GUI - Encoders & Bypassers")
 
-  ![XSSer](https://xsser.03c8.net/xsser/thehive7.png "XSSer [HTTP POST] [REMOTE] Reverse Exploit")
-
-  ![XSSer](https://xsser.03c8.net/xsser/thehive8.png "XSSer [HTTP DOM] Exploit")
-
-  ![XSSer](https://xsser.03c8.net/xsser/zika4.png "XSSer GeoMap")
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_report.png "XSSer PDF Report")
+  
+  ![XSSer](https://xsser.03c8.net/xsser/blackswarm_map.png "XSSer GeoMap")
 

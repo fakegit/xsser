@@ -14,7 +14,7 @@
     <property name="can_default">True</property>
     <property name="has_tooltip">True</property>
     <property name="border_width">1</property>
-    <property name="title" translatable="yes">XSSer v1.8.[3]: "The Hiv€!" - (https://xsser.03c8.net) - by psy</property>
+    <property name="title" translatable="yes">XSSer v1.9: "Bl4ck Swarm!" - (https://xsser.03c8.net) - by psy</property>
     <property name="window_position">center-always</property>
     <property name="destroy_with_parent">True</property>
     <property name="icon">images/xssericon_24x24.png</property>
@@ -408,7 +408,7 @@
                                 <property name="tooltip_text" translatable="yes">Change your HTTP User-Agent header</property>
                                 <property name="invisible_char">●</property>
                                 <property name="width_chars">40</property>
-                                <property name="text" translatable="yes">Googlebot/2.1 (+http://www.google.com/bot.html)</property>
+                                <property name="placeholder_text" translatable="yes">SPOOFED (random / rotating per request)</property>
                               </object>
                               <packing>
                                 <property name="expand">True</property>
@@ -1724,12 +1724,12 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
-                              <object class="GtkCheckButton" id="phpids">
-                                <property name="label" translatable="yes">PHPIDS (&lt;0.6.5)</property>
+                              <object class="GtkCheckButton" id="cloudflare">
+                                <property name="label" translatable="yes">Cloudflare</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: ALL</property>
+                                <property name="tooltip_text" translatable="yes">WAF bypasser</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1746,7 +1746,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: ALL</property>
+                                <property name="tooltip_text" translatable="yes">WAF bypasser</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1759,11 +1759,11 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="f5bigip">
-                                <property name="label" translatable="yes">F5 Big IP</property>
+                                <property name="label" translatable="yes">F5 BIG-IP</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: Chrome + Firefox + Opera</property>
+                                <property name="tooltip_text" translatable="yes">WAF: F5 BIG-IP ASM</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1776,11 +1776,11 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="modsec">
-                                <property name="label" translatable="yes">Apache Mod-sec</property>
+                                <property name="label" translatable="yes">Mod-Security + CRS v3</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: ALL</property>
+                                <property name="tooltip_text" translatable="yes">WAF bypasser</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1792,12 +1792,12 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="opera">
-                                <property name="label" translatable="yes">Opera 10.5 &amp; IE 6</property>
+                              <object class="GtkCheckButton" id="azure">
+                                <property name="label" translatable="yes">Azure</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: Opera + IE</property>
+                                <property name="tooltip_text" translatable="yes">WAF: Azure Front Door</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1809,46 +1809,12 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="iexplorer">
-                                <property name="label" translatable="yes">Internet Explorer 9</property>
+                              <object class="GtkCheckButton" id="wordfence">
+                                <property name="label" translatable="yes">Wordfence</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: IE</property>
-                                <property name="xalign">0</property>
-                                <property name="draw_indicator">True</property>
-                              </object>
-                              <packing>
-                                <property name="expand">True</property>
-                                <property name="fill">False</property>
-                                <property name="padding">10</property>
-                                <property name="position">4</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkCheckButton" id="chrome">
-                                <property name="label" translatable="yes">Chrome 19 &amp; Firefox 12</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: Chrome + FF</property>
-                                <property name="xalign">0</property>
-                                <property name="draw_indicator">True</property>
-                              </object>
-                              <packing>
-                                <property name="expand">True</property>
-                                <property name="fill">False</property>
-                                <property name="padding">10</property>
-                                <property name="position">4</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkCheckButton" id="firefox">
-                                <property name="label" translatable="yes">Firefox 12</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: FF</property>
+                                <property name="tooltip_text" translatable="yes">WAF: Wordfence (WordPress)</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1871,12 +1837,12 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
-                              <object class="GtkCheckButton" id="phpids070">
-                                <property name="label" translatable="yes">PHPIDS (&lt;0.7.0)</property>
+                              <object class="GtkCheckButton" id="fortiweb">
+                                <property name="label" translatable="yes">FortiWeb</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: ALL</property>
+                                <property name="tooltip_text" translatable="yes">WAF bypasser</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1889,11 +1855,11 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="webknight">
-                                <property name="label" translatable="yes">WebKnigth (4.1)</property>
+                                <property name="label" translatable="yes">WebKnight (4.1)</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Chrome</property>
+                                <property name="tooltip_text" translatable="yes">WAF: AQTRONIX WebKnight</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1906,11 +1872,11 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="sucuri">
-                                <property name="label" translatable="yes">SucuriWAF</property>
+                                <property name="label" translatable="yes">Sucuri</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: ALL</property>
+                                <property name="tooltip_text" translatable="yes">WAF bypasser</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1927,7 +1893,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: ALL</property>
+                                <property name="tooltip_text" translatable="yes">WAF bypasser</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1939,12 +1905,12 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="quickdefense">
-                                <property name="label" translatable="yes">QuickDefense</property>
+                              <object class="GtkCheckButton" id="akamai">
+                                <property name="label" translatable="yes">Akamai</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Browser: Chrome</property>
+                                <property name="tooltip_text" translatable="yes">WAF: Akamai (Kona / App &amp; API Protector)</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1952,7 +1918,24 @@
                                 <property name="expand">True</property>
                                 <property name="fill">False</property>
                                 <property name="padding">10</property>
-                                <property name="position">3</property>
+                                <property name="position">4</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="awswaf">
+                                <property name="label" translatable="yes">AWS WAF</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="tooltip_text" translatable="yes">WAF: AWS WAF</property>
+                                <property name="xalign">0</property>
+                                <property name="draw_indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">False</property>
+                                <property name="padding">10</property>
+                                <property name="position">4</property>
                               </packing>
                             </child>
                           </object>
@@ -2102,6 +2085,74 @@
                                         <property name="position">4</property>
                                       </packing>
                                     </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="by_mix">
+                                        <property name="label" translatable="yes">Mixed (String.fromCharCode + Unescape)</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Use --Mix combined obfuscation</property>
+                                        <property name="xalign">0</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">False</property>
+                                        <property name="padding">10</property>
+                                        <property name="position">5</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="by_dou">
+                                        <property name="label" translatable="yes">Double URL</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Use --Dou double URL encoding</property>
+                                        <property name="xalign">0</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">False</property>
+                                        <property name="padding">10</property>
+                                        <property name="position">6</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="by_ent">
+                                        <property name="label" translatable="yes">HTML entities</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Use --Ent HTML entity encoding</property>
+                                        <property name="xalign">0</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">False</property>
+                                        <property name="padding">10</property>
+                                        <property name="position">7</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="by_cas">
+                                        <property name="label" translatable="yes">Mixed case</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Use --Cas mixed-case obfuscation</property>
+                                        <property name="xalign">0</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">False</property>
+                                        <property name="padding">10</property>
+                                        <property name="position">8</property>
+                                      </packing>
+                                    </child>
                                   </object>
                                   <packing>
                                     <property name="expand">True</property>
@@ -2165,6 +2216,57 @@
                                       </packing>
                                     </child>
                                     <child>
+                                      <object class="GtkCheckButton" id="by_uni">
+                                        <property name="label" translatable="yes">JS Unicode escapes</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Use --Uni JS Unicode escapes</property>
+                                        <property name="xalign">0</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">False</property>
+                                        <property name="padding">10</property>
+                                        <property name="position">4</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="by_xhx">
+                                        <property name="label" translatable="yes">JS Hex escapes</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Use --Xhx JS hex escapes</property>
+                                        <property name="xalign">0</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">False</property>
+                                        <property name="padding">10</property>
+                                        <property name="position">5</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="by_ocb">
+                                        <property name="label" translatable="yes">JS Octal escapes</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Use --Ocb JS octal escapes</property>
+                                        <property name="xalign">0</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">False</property>
+                                        <property name="padding">10</property>
+                                        <property name="position">6</property>
+                                      </packing>
+                                    </child>
+                                    <child>
                                       <object class="GtkHBox" id="hbox22">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
@@ -2201,7 +2303,7 @@
                                       <packing>
                                         <property name="expand">True</property>
                                         <property name="fill">True</property>
-                                        <property name="position">4</property>
+                                        <property name="position">7</property>
                                       </packing>
                                     </child>
                                   </object>
@@ -2762,6 +2864,40 @@
                                 <property name="fill">False</property>
                                 <property name="padding">10</property>
                                 <property name="position">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="exportpdf">
+                                <property name="label" translatable="yes">Export to PDF</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="tooltip_text" translatable="yes">Export a professional PDF report (--pdf)</property>
+                                <property name="xalign">0</property>
+                                <property name="draw_indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">False</property>
+                                <property name="padding">10</property>
+                                <property name="position">3</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="exportjson">
+                                <property name="label" translatable="yes">Export to JSON</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="tooltip_text" translatable="yes">Export a JSON report for CI / pipelines (--json)</property>
+                                <property name="xalign">0</property>
+                                <property name="draw_indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">False</property>
+                                <property name="padding">10</property>
+                                <property name="position">4</property>
                               </packing>
                             </child>
                           </object>
@@ -4978,11 +5114,11 @@
                     </child>
                     <child>
                       <object class="GtkButton" id="donate">
-                        <property name="label" translatable="yes">Donate</property>
+                        <property name="label" translatable="yes">Shop</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <property name="tooltip_text" translatable="yes">Donate!</property>
+                        <property name="tooltip_text" translatable="yes">Shop</property>
                         <signal name="clicked" handler="on_donate_clicked" swapped="no"/>
                       </object>
                       <packing>

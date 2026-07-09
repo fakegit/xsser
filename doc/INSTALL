@@ -8,7 +8,7 @@ Cross Site "Scripter" is an automatic -framework- to detect, exploit and report 
 Current Version:
 ==============================
 
-XSSer v1.8[4]: "The Hiv€!" (2010/2021) // [https://xsser.03c8.net]
+XSSer v1.9: "Bl4ck Swarm!" (2010/2026) // [https://xsser.03c8.net]
 
 ================================================================
 + INSTALL: AUTO
@@ -26,17 +26,18 @@ XSSer runs on many platforms. It requires Python (3.x) and the following librari
     - python3-bs4 - error-tolerant HTML parser for Python 3
     - python3-geoip - Python3 bindings for the GeoIP IP-to-country resolver library
     - python3-gi - Python 3 bindings for gobject-introspection libraries
-    - python3-cairocffi - cffi-based cairo bindings for Python (Python3)
     - python3-selenium - Python3 bindings for Selenium
     - firefoxdriver - Firefox WebDriver support
+    - ddgs - DuckDuckGo search library (used by the 'dorking' engine)
+    - fpdf2 - PDF generation library (used by the '--pdf' report exporter)
 
-On Debian-based systems (ex: Ubuntu), run: 
+On Debian-based systems (ex: Ubuntu), run:
 
-    sudo apt-get install python3-pycurl python3-bs4 python3-geoip python3-cairocffi python3-selenium firefoxdriver
+    sudo apt-get install python3-pycurl python3-bs4 python3-geoip python3-gi python3-selenium firefoxdriver python3-fpdf2
 
 On other systems such as: Kali, Ubuntu, ArchLinux, ParrotSec, Fedora, etc... also run:
 
-    sudo pip3 install pycurl bs4 pygeoip gobject cairocffi selenium 
+    sudo pip3 install pycurl bs4 pygeoip PyGObject selenium ddgs fpdf2
 
 ####  Source libs:
 
@@ -45,8 +46,9 @@ On other systems such as: Kali, Ubuntu, ArchLinux, ParrotSec, Fedora, etc... als
        * PyBeautifulSoup4: https://pypi.org/project/beautifulsoup4/
        * PyGeoIP: https://pypi.org/project/pygeoip/
        * PyGObject: https://pypi.org/project/gobject/
-       * PyCairocffi: https://pypi.org/project/cairocffi/
        * PySelenium: https://pypi.org/project/selenium/
+       * ddgs: https://pypi.org/project/ddgs/
+       * fpdf2: https://pypi.org/project/fpdf2/
 
 ================================================================
 

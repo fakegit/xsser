@@ -1,6 +1,53 @@
 ================================================================
-Changelog: XSSer v1.8.4 (https://xsser.03c8.net)
+Changelog: XSSer v1.9 (https://xsser.03c8.net)
 ==============================
+
+=================
+July 9, 2026:
+=================
+
+- New release: XSSer v1.9: "Bl4ck Swarm!"
+- Added: context-aware detection engine -> confirms a FOUND only in a real executable context (reduces false positives)
+- Modified/Updated: detection is encoding-aware and reports the executable context of each finding
+- Modified/Updated: checker systems run as ordered phases when combined (--hash -> --heuristic -> injection)
+- Modified/Updated: reports written into a 'reports/' folder, including the command used and the techniques applied (RAW/JSON/XML/PDF)
+- Modified/Updated: heuristic reports show the exact character tested
+- Fixed: connection statistics are always counted (not only with --statistics)
+- Fixed: --Cem ignores unknown keys instead of aborting; --Dwo/--Doo reordered in --help
+- Fixed: GTK (--gtk) -> User-Agent rotation, LANDING reliably stops a test, GET-URL auto-injection and GUI hang on abort
+- Added: new modern XSS vectors (total: 1515 = XSS: 1450 + DCP: 22 + DOM: 27 + HTTPsr: 16)
+    * HTML5 auto-firing handlers, SVG/SMIL, MathML, details/dialog/media/iframe-srcdoc
+    * mutation XSS (mXSS), DOM-clobbering, AngularJS/Vue CSTI, CSP-bypass gadgets, polyglots
+- Modified/Updated: dorking engine -> rewritten with 7 providers (Bing, DuckDuckGo, Brave, Mojeek, Yahoo, Startpage, Ecosia) using the 'ddgs' library + resilient fallbacks
+- Modified/Updated: Anti-antiXSS Firewall rules -> removed dead browser XSS filters (Firefox/Chrome/IE/Opera), PHPIDS and QuickDefense
+- Added: modern WAF bypassers -> Cloudflare, Akamai, AWS WAF, Azure, Wordfence, FortiWeb (kept/updated: Imperva, F5 BIG-IP, Barracuda, Mod-Security+CRSv3, Sucuri, WebKnight)
+- Added: new Bypasser(s)/encoders -> Double-URL (--Dou), HTML entities (--Ent), mixed-Case (--Cas), JS Unicode/Hex/Octal escapes (--Uni/--Xhx/--Ocb)
+- Added: PDF reporting (--pdf) -> professional security assessment report (logo + hive/swarm aesthetic)
+- Added: HTTP client certificate authentication (--auth-cert)
+- Added: auto-install of missing libraries
+- Added: --debug mode (show tracebacks and internal errors)
+- Added: JSON report export (--json) for CI / bug-bounty pipelines
+- Added: stdin/pipe mode (ex: cat urls.txt | xsser --auto)
+- Added: load a raw HTTP request from a file (-r) [ex: saved from a proxy-cache]
+- Modified/Updated: Wizard Helper (--wizard) -> added 'reverse-check' + 'report' questions; pressing [ENTER] runs a complete analysis (crawler + --auto) with PDF report
+- Modified/Updated: GTK GUI (--gtk) -> multiple dorking engines, updated 'about' documentation, synced options
+- Modified/Updated: imagexss (--imx) -> SVG (script execution) + valid GIF/PNG/JPEG carrying the payload in metadata
+- Modified/Updated: heuristic checker (added backtick, parentheses, braces and colon probes)
+- Modified/Updated: expanded 'dorks' list and modernized user-agents
+- Fixed: crawler form parsing (BeautifulSoup4 attribute detection)
+- Fixed: Cookie/User-Agent/Referer injection (--Coo/--Xsa/--Xsr) crash on keyword-less targets
+- Fixed: hardened TLS (negotiate TLS 1.2+; removed SSLv2/SSLv3/TLS1.0/1.1 fallbacks)
+- Fixed: replaced removed 'cgi.escape' with 'html.escape' (Python 3.8+)
+- Fixed: base64 encoding on Python 3 (affected --Dcp/--all/--B64/--Fp)
+- Fixed: --reverse-check on Selenium 4.x (find_element API + unexpected-alert handling)
+- Fixed: --all full-audit crash (DOM vectors when no headless browser is present)
+- Added: unit test suite (tests/) covering all option groups + end-to-end detection
+- Removed: Twitter/'swarm' social auto-publisher (deprecated)
+- Removed: Flash (.swf) injection support (Flash is discontinued)
+- Modified/Updated: ported to Selenium 4.x (Service API)
+- Updated: Requirements/libraries
+- Updated: Documentation
+- Updated: Website
 
 =================
 March 6, 2021:

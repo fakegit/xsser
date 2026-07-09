@@ -8,7 +8,7 @@ Cross Site "Scripter" is an automatic -framework- to detect, exploit and report 
 Current Version:
 ==============================
 
-XSSer v1.8[4]: "The Hiv€!" (2010/2021) // [https://xsser.03c8.net]
+XSSer v1.9: "Bl4ck Swarm!" (2010/2026) // [https://xsser.03c8.net]
 
 ================================================================
 Options and features:
@@ -35,8 +35,7 @@ Options:
     code embedded. XST allows you to discover if target is vulnerable to
     'Cross Site Tracing' [CAPEC-107]:
 
-    --imx=IMX           IMX - Create an image with XSS (--imx image.png)
-    --fla=FLASH         FLA - Create a flash movie with XSS (--fla movie.swf)
+    --imx=IMX           IMX - Create an image with XSS (--imx image.svg)
     --xst=XST           XST - Cross Site Tracing (--xst http(s)://host.com)
 
   *Select Target(s)*:
@@ -46,6 +45,8 @@ Options:
     --all=TARGET        Automatically audit an entire target
     -u URL, --url=URL   Enter target to audit
     -i READFILE         Read target(s) urls from file
+    -r REQFILE          Load a raw HTTP request from a file (ex: saved from a
+                        proxy-cache)
     -d DORK             Search target(s) using a query (ex: 'news.php?id=')
     -l                  Search from a list of 'dorks'
     --De=DORK_ENGINE    Use this search engine (default: DuckDuckGo)
@@ -76,6 +77,7 @@ Options:
     --headers=HEADERS   Extra HTTP headers newline separated
     --auth-type=ATYPE   HTTP Authentication type (Basic, Digest, GSS or NTLM)
     --auth-cred=ACRED   HTTP Authentication credentials (name:password)
+    --auth-cert=ACERT   HTTP Authentication certificate (key_file,cert_file)
     --check-tor         Check to see if Tor is used properly
     --proxy=PROXY       Use proxy server (tor: http://localhost:8118)
     --ignore-proxy      Ignore system default HTTP proxy
@@ -84,7 +86,7 @@ Options:
     --threads=THREADS   Maximum number of concurrent requests (default: 5)
     --delay=DELAY       Delay in seconds between each request (default: 0)
     --tcp-nodelay       Use the TCP_NODELAY option
-    --follow-redirects  Follow server redirection responses (302)
+    --follow-redirects  Follow server redirections (default: FALSE)
     --follow-limit=FLI  Set limit for redirection requests (default: 50)
 
   *Checker Systems*:
@@ -111,27 +113,27 @@ Options:
     These options can be used to set the list of vectors provided by
     XSSer. Choose only if required:
 
-    --auto-set=FZZ_NUM  ASET  - Limit of vectors to inject (default: 1293)
+    --auto-set=FZZ_NUM  ASET  - Limit of vectors to inject (default: 1450)
     --auto-info         AINFO - Select ONLY vectors with INFO (default: FALSE)
     --auto-random       ARAND - Set random to order (default: FALSE)
 
   *Anti-antiXSS Firewall rules*:
     These options can be used to try to bypass specific WAF/IDS products
-    and some anti-XSS browser filters. Choose only if required:
+    by wrapping the vector with per-product evasion. Choose only if
+    required:
 
-    --Phpids0.6.5       PHPIDS (0.6.5) [ALL]
-    --Phpids0.7         PHPIDS (0.7) [ALL]
-    --Imperva           Imperva Incapsula [ALL]
-    --Webknight         WebKnight (4.1) [Chrome]
-    --F5bigip           F5 Big IP [Chrome + FF + Opera]
-    --Barracuda         Barracuda WAF [ALL]
-    --Modsec            Mod-Security [ALL]
-    --Quickdefense      QuickDefense [Chrome]
-    --Sucuri            SucuriWAF [ALL]
-    --Firefox           Firefox 12 [& below]
-    --Chrome            Chrome 19 & Firefox 12 [& below]
-    --Opera             Opera 10.5 [& below]
-    --Iexplorer         IExplorer 9 & Firefox 12 [& below]
+    --Cloudflare        Cloudflare WAF
+    --Akamai            Akamai (Kona / App & API Protector)
+    --Awswaf            AWS WAF (Web Application Firewall)
+    --Azure             Azure Front Door WAF (DRS)
+    --Imperva           Imperva (Incapsula / Cloud WAF)
+    --F5bigip           F5 BIG-IP ASM / Advanced WAF
+    --Barracuda         Barracuda WAF
+    --Modsec            Mod-Security + OWASP CRS v3
+    --Wordfence         Wordfence (WordPress WAF)
+    --Sucuri            Sucuri (CloudProxy) WAF
+    --Fortiweb          Fortinet FortiWeb WAF
+    --Webknight         AQTRONIX WebKnight WAF
 
   *Select Bypasser(s)*:
     These options can be used to encode vector(s) and try to bypass
@@ -145,6 +147,12 @@ Options:
     --Hes               Use Hexadecimal encoding with semicolons
     --Dwo               Encode IP addresses with DWORD
     --Doo               Encode IP addresses with Octal
+    --Dou               Use Double URL encoding
+    --Ent               Use HTML named entities encoding
+    --Cas               Use mixed-Case mutation
+    --Uni               Use JS Unicode escape (\uXXXX)
+    --Xhx               Use JS Hexadecimal escape (\xNN)
+    --Ocb               Use JS Octal escape (\NNN)
     --Cem=CEM           Set different 'Character Encoding Mutations'
                         (reversing obfuscators) (ex: 'Mix,Une,Str,Hex')
 
@@ -182,11 +190,15 @@ Options:
   *Reporting*:
     --save              Export to file (XSSreport.raw)
     --xml=FILEXML       Export to XML (--xml file.xml)
+    --json=FILEJSON     Export to JSON (--json file.json)
+    --pdf=FILEPDF       Export to PDF (--pdf report.pdf)
 
   *Miscellaneous*:
     --silent            Inhibit console output results
     --alive=ISALIVE     Set limit of errors before check if target is alive
     --update            Check for latest stable version
+    --debug             Run in debug mode (show tracebacks and internal
+                        errors)
 
 ================================================================
 Commands and examples:
@@ -298,7 +310,7 @@ Commands and examples:
 
 * Injection of a XSS code provided by user on a -fake- image (ready to be uploaded to your public profile):<br><br>
 
-  xsser --Imx "test.png" --payload="<script>alert('XSSed');</script>"
+  xsser --imx "test.svg" --payload="<script>alert('XSSed');</script>"
 
 ----------------------------------------
 
@@ -308,9 +320,21 @@ Commands and examples:
 
 ----------------------------------------
 
-* Create a malicious Flash movie :
+* Full audit of a target (crawler + automatic payloading), validating each finding with a reverse connection [100% real, no false positives] and exporting a professional PDF report:
 
-  xsser --fla "INFECTED_movie.swf"
+  xsser -u "https://target.com" -c 100 --auto --reverse-check --pdf "security_report.pdf"
+
+----------------------------------------
+
+* Pipe target(s) from another tool and export the results as JSON (for CI / pipelines):
+
+  cat urls.txt | xsser --auto --json "results.json"
+
+----------------------------------------
+
+* Replay a raw HTTP request saved from a proxy-cache (headers, cookies and POST body are preserved; mark the injection point with 'XSS'):
+
+  xsser -r "request.txt" --auto
 
 ----------------------------------------
 

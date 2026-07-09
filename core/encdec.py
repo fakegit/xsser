@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2020 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -28,12 +28,18 @@ class EncoderDecoder(object):
     """
     # encdec functions:
     def __init__(self):
-        self.encmap = { "Str" : lambda x : self._fromCharCodeEncode(x), 
+        self.encmap = { "Str" : lambda x : self._fromCharCodeEncode(x),
                    "Hex" : lambda x : self._hexEncode(x),
                    "Hes" : lambda x : self._hexSemiEncode(x),
                    "Une" : lambda x : self._unEscape(x),
                    "Dec" : lambda x : self._decEncode(x),
-                   "Mix" : lambda x : self._unEscape(self._fromCharCodeEncode(x))
+                   "Mix" : lambda x : self._unEscape(self._fromCharCodeEncode(x)),
+                   "Dou" : lambda x : self._doubleUrlEncode(x),
+                   "Ent" : lambda x : self._htmlEntityEncode(x),
+                   "Cas" : lambda x : self._mixedCaseEncode(x),
+                   "Uni" : lambda x : self._jsUnicodeEncode(x),
+                   "Xhx" : lambda x : self._jsHexEncode(x),
+                   "Ocb" : lambda x : self._jsOctalEncode(x)
                    }
 
     def _fromCharCodeEncode(self, string):
@@ -79,6 +85,63 @@ class EncoderDecoder(object):
         encoded=''
         for char in string:
             encoded=encoded+urllib.parse.quote(char)
+        return encoded
+
+    def _doubleUrlEncode(self, string):
+        """
+        Encode with double URL encoding.
+        """
+        return urllib.parse.quote(urllib.parse.quote(string))
+
+    def _htmlEntityEncode(self, string):
+        """
+        Encode to HTML named entities.
+        """
+        entities = {'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;','(':'&lpar;',')':'&rpar;',':':'&colon;','=':'&equals;','/':'&sol;','`':'&grave;',';':'&semi;','&':'&amp;'}
+        encoded=''
+        for char in string:
+            encoded=encoded+entities.get(char, char)
+        return encoded
+
+    def _mixedCaseEncode(self, string):
+        """
+        Mutate to mixed case.
+        """
+        encoded=''
+        i=0
+        for char in string:
+            if char.isalpha():
+                encoded=encoded+(char.upper() if i%2==0 else char.lower())
+                i=i+1
+            else:
+                encoded=encoded+char
+        return encoded
+
+    def _jsUnicodeEncode(self, string):
+        """
+        Encode to JS unicode escape.
+        """
+        encoded=''
+        for char in string:
+            encoded=encoded+"\\u%04x" % ord(char)
+        return encoded
+
+    def _jsHexEncode(self, string):
+        """
+        Encode to JS hexadecimal escape.
+        """
+        encoded=''
+        for char in string:
+            encoded=encoded+"\\x%02x" % ord(char)
+        return encoded
+
+    def _jsOctalEncode(self, string):
+        """
+        Encode to JS octal escape.
+        """
+        encoded=''
+        for char in string:
+            encoded=encoded+"\\"+oct(ord(char))[2:]
         return encoded
 
     def _ipDwordEncode(self, string):

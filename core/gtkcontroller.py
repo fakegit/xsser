@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2020 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -269,7 +269,7 @@ class Controller(XSSerReporter):
         step4_options_w = self.wTree.get_object('combobox_step4')
         step5_options_w = self.wTree.get_object('combobox_step5')
         # ui comboboxes content
-        dorker_options = [ 'duck', 'startpage', 'yahoo', 'bing']
+        dorker_options = [ 'bing', 'duck', 'brave', 'mojeek', 'yahoo', 'startpage', 'ecosia']
         crawlerdeep_options = ['1', '2', '3', '4', '5']
         checkmethod_options = ['GET', 'POST']
         connect_geomap = ['OFF', 'ON']
@@ -1344,21 +1344,22 @@ class Controller(XSSerReporter):
 
     def on_update_clicked(self, widget):
         """
-        Search for latest XSSer version
+        Execute XSSer auto-update
         """
-        webbrowser.open("https://github.com/epsylon/xsser")
+        from core.update import Updater
+        threading.Thread(target=Updater, daemon=True).start()
 
     def on_reportbug_clicked(self, widget):
         """
         Report bugs, ideas...
         """
-        webbrowser.open("https://lists.sourceforge.net/lists/listinfo/xsser-users")
+        webbrowser.open("https://github.com/epsylon/xsser/issues")
 
     def on_donate_clicked(self, widget):
         """
-        Donate something
+        Visit the shop
         """
-        webbrowser.open("https://03c8.net")
+        webbrowser.open("https://thehackerstyle.com/store/")
 
     def generate_command(self):
         command = ["xsser"]
@@ -1470,8 +1471,11 @@ class Controller(XSSerReporter):
             command.append("--heuristic")
         # get USER-AGENT
         target_entry = self.wTree.get_object('useragent')
-        command.append("--user-agent")
-        command.append(target_entry.get_text())
+        if target_entry.get_text() == "":
+            pass
+        else:
+            command.append("--user-agent")
+            command.append(target_entry.get_text())
         # get REFERER
         target_entry = self.wTree.get_object('referer')
         if target_entry.get_text() == "":
@@ -1607,7 +1611,7 @@ class Controller(XSSerReporter):
             command.append("--checkaturl")
             command.append(target_entry.get_text())
             command.append("--checkmethod")
-            command.append(check_method.get_model().get_value(checkmethod.get_active_iter(),0))
+            command.append(check_method.get_model().get_value(check_method.get_active_iter(),0))
             if check_data.get_text() == "":
                 pass
             else: 
@@ -1694,6 +1698,27 @@ class Controller(XSSerReporter):
             pass
         else:
             command.append("--Dec")
+        target_entry = self.wTree.get_object('by_mix')
+        if target_entry.get_active() == True:
+            command.append("--Mix")
+        target_entry = self.wTree.get_object('by_dou')
+        if target_entry.get_active() == True:
+            command.append("--Dou")
+        target_entry = self.wTree.get_object('by_ent')
+        if target_entry.get_active() == True:
+            command.append("--Ent")
+        target_entry = self.wTree.get_object('by_cas')
+        if target_entry.get_active() == True:
+            command.append("--Cas")
+        target_entry = self.wTree.get_object('by_uni')
+        if target_entry.get_active() == True:
+            command.append("--Uni")
+        target_entry = self.wTree.get_object('by_xhx')
+        if target_entry.get_active() == True:
+            command.append("--Xhx")
+        target_entry = self.wTree.get_object('by_ocb')
+        if target_entry.get_active() == True:
+            command.append("--Ocb")
         # get Bypasser: CEM
         target_entry = self.wTree.get_object('enter_cem')
         if target_entry.get_text() == "":
@@ -1743,18 +1768,6 @@ class Controller(XSSerReporter):
             pass
         else:
             command.append("--Anchor")
-        # get Technique: PHP IDS bug (0.6.5)
-        target_entry = self.wTree.get_object('phpids')
-        if target_entry.get_active() == False:
-            pass
-        else:
-            command.append("--Phpids0.6.5")
-        # get Technique: PHP IDS bug (0.7.0)
-        target_entry = self.wTree.get_object('phpids070')
-        if target_entry.get_active() == False:
-            pass
-        else:
-            command.append("--Phpids0.7")
         # get Technique: Imperva 
         target_entry = self.wTree.get_object('imperva')
         if target_entry.get_active() == False:
@@ -1785,36 +1798,27 @@ class Controller(XSSerReporter):
             pass
         else:
             command.append("--Modsec")
-        # get Technique: QuickDefense
-        target_entry = self.wTree.get_object('quickdefense')
-        if target_entry.get_active() == False:
-            pass
-        else:
-            command.append("--Quickdefense")
-        # get Technique: Firefox
-        target_entry = self.wTree.get_object('firefox')
-        if target_entry.get_active() == False:
-            pass
-        else:
-            command.append("--Firefox")
-        # get Technique: Chrome
-        target_entry = self.wTree.get_object('chrome')
-        if target_entry.get_active() == False:
-            pass
-        else:
-            command.append("--Chrome")
-        # get Technique: IExplorer
-        target_entry = self.wTree.get_object('iexplorer')
-        if target_entry.get_active() == False:
-            pass
-        else:
-            command.append("--Iexplorer")
-        # get Technique: Opera
-        target_entry = self.wTree.get_object('opera')
-        if target_entry.get_active() == False:
-            pass
-        else:
-            command.append("--Opera")
+        target_entry = self.wTree.get_object('cloudflare')
+        if target_entry.get_active() == True:
+            command.append("--Cloudflare")
+        target_entry = self.wTree.get_object('akamai')
+        if target_entry.get_active() == True:
+            command.append("--Akamai")
+        target_entry = self.wTree.get_object('awswaf')
+        if target_entry.get_active() == True:
+            command.append("--Awswaf")
+        target_entry = self.wTree.get_object('azure')
+        if target_entry.get_active() == True:
+            command.append("--Azure")
+        target_entry = self.wTree.get_object('wordfence')
+        if target_entry.get_active() == True:
+            command.append("--Wordfence")
+        target_entry = self.wTree.get_object('fortiweb')
+        if target_entry.get_active() == True:
+            command.append("--Fortiweb")
+        target_entry = self.wTree.get_object('sucuri')
+        if target_entry.get_active() == True:
+            command.append("--Sucuri")
         # get Final code: Normal Payload
         target_entry = self.wTree.get_object('normalfinal')
         if target_entry.get_active() == False:
@@ -1878,8 +1882,16 @@ class Controller(XSSerReporter):
         if target_entry.get_active() == False:
             pass
         else:
-            command.append("--xml") 
+            command.append("--xml")
             command.append("xsser-test:" + str(datetime.datetime.now()) + ".xml")
+        target_entry = self.wTree.get_object('exportpdf')
+        if target_entry.get_active() == True:
+            command.append("--pdf")
+            command.append("xsser-report:" + str(datetime.datetime.now()) + ".pdf")
+        target_entry = self.wTree.get_object('exportjson')
+        if target_entry.get_active() == True:
+            command.append("--json")
+            command.append("xsser-report:" + str(datetime.datetime.now()) + ".json")
         # generate wizard commands
         # step 1
         if self.target_option != "":

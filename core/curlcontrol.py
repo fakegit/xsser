@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2020 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -41,7 +41,7 @@ class Curl:
     xclient = None
     atype = None
     acred = None
-    #acert = None
+    acert = None
     retries = 1
     delay = 0
     followred = 0
@@ -68,18 +68,9 @@ class Curl:
         self.set_option(pycurl.SSL_VERIFYHOST, 0)
         self.set_option(pycurl.SSL_VERIFYPEER, 0)
         try:
-            self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_2) # max supported version by pycurl
+            self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_2) # negotiate TLS 1.2 or higher
         except:
-            try:
-                self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_1)
-            except: # use vulnerable TLS/SSL versions (TLS1_0 -> weak enc | SSLv2 + SSLv3 -> deprecated)
-                try:
-                    self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_0)
-                except:
-                    try:
-                        self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_SSLv3)
-                    except:
-                        self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_SSLv2)
+            pass
         self.set_option(pycurl.FOLLOWLOCATION, 0)
         self.set_option(pycurl.MAXREDIRS, 50)
         # this is 'black magic'
@@ -217,18 +208,9 @@ class Curl:
             self.set_option(pycurl.SSL_VERIFYHOST, 0)
             self.set_option(pycurl.SSL_VERIFYPEER, 0)
             try:
-                self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_2) # max supported version by pycurl
+                self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_2) # negotiate TLS 1.2 or higher
             except:
-                try:
-                    self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_1)
-                except: # use vulnerable TLS/SSL versions (TLS1_0 -> weak enc | SSLv2 + SSLv3 -> deprecated)
-                    try:
-                        self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_TLSv1_0)
-                    except:
-                        try:
-                            self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_SSLv3)
-                        except:
-                            self.set_option(pycurl.SSLVERSION, pycurl.SSLVERSION_SSLv2)
+                pass
             if self.fakeheaders:
                 from core.randomip import RandomIP
                 if self.xforw:
@@ -361,27 +343,19 @@ class Curl:
         elif not self.atype and self.acred:
             print("\n[E] You specified the HTTP authentication credentials, but did not provide the type\n")
             return
-        #if self.acert:
-        #    acertregexp = re.search("^(.+?),\s*(.+?)$", self.acert)
-        #    if not acertregexp:
-        #        print "\n[E] HTTP authentication certificate option must be 'key_file,cert_file'\n"
-        #        return
-        #    # os.path.expanduser for support of paths with ~
-        #    key_file = os.path.expanduser(acertregexp.group(1))
-        #    cert_file = os.path.expanduser(acertregexp.group(2))
-        #    self.set_option(pycurl.SSL_VERIFYHOST, 0)
-        #    self.set_option(pycurl.SSL_VERIFYPEER, 1)
-        #    self.set_option(pycurl.SSH_PUBLIC_KEYFILE, key_file)
-        #    self.set_option(pycurl.CAINFO, cert_file)
-        #    self.set_option(pycurl.SSLCERT, cert_file)
-        #    self.set_option(pycurl.SSLCERTTYPE, 'p12')
-        #    self.set_option(pycurl.SSLCERTPASSWD, '1234')
-        #    self.set_option(pycurl.SSLKEY, key_file)
-        #    self.set_option(pycurl.SSLKEYPASSWD, '1234')
-        #    for file in (key_file, cert_file):
-        #        if not os.path.exists(file):
-        #            print "\n[E] File '%s' doesn't exist\n" % file
-        #            return
+        if self.acert:
+            acertregexp = re.search(r"^(.+?),\s*(.+?)$", self.acert)
+            if not acertregexp:
+                print("\n[E] HTTP authentication certificate option must be in format 'key_file,cert_file'\n")
+                return
+            key_file = os.path.expanduser(acertregexp.group(1))
+            cert_file = os.path.expanduser(acertregexp.group(2))
+            for cert in (key_file, cert_file):
+                if not os.path.exists(cert):
+                    print("\n[E] File '%s' doesn't exist\n" % cert)
+                    return
+            self.set_option(pycurl.SSLCERT, cert_file)
+            self.set_option(pycurl.SSLKEY, key_file)
         self.set_option(pycurl.SSL_VERIFYHOST, 0)
         self.set_option(pycurl.SSL_VERIFYPEER, 0)
         self.header.seek(0,0)
@@ -432,17 +406,10 @@ class Curl:
             m = email.message_from_string(str(self.header))
         else:
             m = email.message_from_string(str(StringIO()))
-        #m['effective-url'] = url
         m['http-code'] = str(self.handle.getinfo(pycurl.HTTP_CODE))
         m['total-time'] = str(self.handle.getinfo(pycurl.TOTAL_TIME))
         m['namelookup-time'] = str(self.handle.getinfo(pycurl.NAMELOOKUP_TIME))
         m['connect-time'] = str(self.handle.getinfo(pycurl.CONNECT_TIME))
-        #m['pretransfer-time'] = str(self.handle.getinfo(pycurl.PRETRANSFER_TIME))
-        #m['redirect-time'] = str(self.handle.getinfo(pycurl.REDIRECT_TIME))
-        #m['redirect-count'] = str(self.handle.getinfo(pycurl.REDIRECT_COUNT))
-        #m['size-upload'] = str(self.handle.getinfo(pycurl.SIZE_UPLOAD))
-        #m['size-download'] = str(self.handle.getinfo(pycurl.SIZE_DOWNLOAD))
-        #m['speed-upload'] = str(self.handle.getinfo(pycurl.SPEED_UPLOAD))
         m['header-size'] = str(self.handle.getinfo(pycurl.HEADER_SIZE))
         m['request-size'] = str(self.handle.getinfo(pycurl.REQUEST_SIZE))
         m['response-code'] = str(self.handle.getinfo(pycurl.RESPONSE_CODE))
@@ -452,9 +419,6 @@ class Curl:
         except:
             m['content-type'] = str("text/html; charset=UTF-8")
         m['cookielist'] = str(self.handle.getinfo(pycurl.INFO_COOKIELIST))
-        #m['content-length-download'] = str(self.handle.getinfo(pycurl.CONTENT_LENGTH_DOWNLOAD))
-        #m['content-length-upload'] = str(self.handle.getinfo(pycurl.CONTENT_LENGTH_UPLOAD))
-        #m['encoding'] = str(self.handle.getinfo(pycurl.ENCODING))
         return m
 
     @classmethod

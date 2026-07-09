@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2019 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -42,6 +42,14 @@ class xml_reporting(object):
         hdr = ET.SubElement(root, "header")
         title = ET.SubElement(hdr, "title")
         title.text = "XSSer Security Report: " + str(datetime.datetime.now())
+        if hasattr(self.instance, 'get_command_used'):
+            command = ET.SubElement(hdr, "command")
+            command.text = self.instance.get_command_used()
+        if hasattr(self.instance, 'get_techniques_used'):
+            techniques = ET.SubElement(hdr, "techniques")
+            for technique_name in self.instance.get_techniques_used():
+                technique = ET.SubElement(techniques, "technique")
+                technique.text = technique_name
         abstract = ET.SubElement(root, "abstract")
         total_injections = len(self.instance.hash_found) + len(self.instance.hash_notfound)
         if len(self.instance.hash_found) + len(self.instance.hash_notfound) == 0:
@@ -78,7 +86,7 @@ class xml_reporting(object):
             othercon.text = str(self.instance.other_connection)
             st_accur = ET.SubElement(con, "accur")
             try:
-                st_accur.text = "%s %%" % (str(((len(self.instance.success_connection) * 100) / total_connections)), )
+                st_accur.text = "%s %%" % (str(((self.instance.success_connection * 100) / total_connections)), )
             except ZeroDivisionError:
                 st_accur.text = "0 %"
             st_inj = ET.SubElement(stats, "injections")
@@ -98,6 +106,22 @@ class xml_reporting(object):
             attack = ET.SubElement(results, "attack")
             url_ = ET.SubElement(attack, "payload")
             url_.text = line[0]
+            if line[1] == "[Heuristic test]" or line[1] == "[hashing check]":
+                kind = ET.SubElement(attack, "type")
+                kind.text = "heuristic" if line[1] == "[Heuristic test]" else "hashing check"
+                vector = ET.SubElement(attack, "vector")
+                vector.text = str(line[3])
+                target_ = ET.SubElement(attack, "target")
+                target_.text = str(line[6])
+                if line[1] == "[Heuristic test]":
+                    character = ET.SubElement(attack, "character")
+                    character.text = str(line[5])
+                    status = ET.SubElement(attack, "status")
+                    status.text = "NOT FILTERED"
+                else:
+                    status = ET.SubElement(attack, "status")
+                    status.text = "HASH FOUND"
+                continue
             attack_url = self.instance.apply_postprocessing(line[0], line[1], line[2], line[3], line[4], line[5], line[6])
             if self.instance.options.onm or self.instance.options.ifr or self.instance.options.b64  or self.instance.options.dos or self.instance.options.doss or self.instance.options.finalremote or self.instance.options.finalpayload:
                 aurl = ET.SubElement(attack, "finalattack")

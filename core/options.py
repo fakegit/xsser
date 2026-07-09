@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2021 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -20,6 +20,7 @@ with xsser; if not, write to the Free Software Foundation, Inc., 51
 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
 import optparse
+import sys, tempfile
 import core.fuzzing.vectors
 import core.fuzzing.DCP
 import core.fuzzing.DOM
@@ -30,7 +31,7 @@ class XSSerOptions(optparse.OptionParser):
         optparse.OptionParser.__init__(self, 
                            description='Cross Site "Scripter" is an automatic -framework- to detect, exploit and\nreport XSS vulnerabilities in web-based applications.',
                            prog='XSSer.py',
-			   version='\nXSSer v1.8[4]: "The HiV€!" - (https://xsser.03c8.net) - 2010/2021 -> by psy\n',
+			   version='\nXSSer v1.9: "Bl4ck Swarm!" - (https://xsser.03c8.net) - 2010/2026 -> by psy\n',
                            usage= '\n\nxsser [OPTIONS] [--all <url> |-u <url> |-i <file> |-d <dork> (options)|-l ] [-g <get> |-p <post> |-c <crawl> (options)]\n[Request(s)] [Checker(s)] [Vector(s)] [Anti-antiXSS/IDS] [Bypasser(s)] [Technique(s)] [Final Injection(s)] [Reporting] {Miscellaneous}')
         self.set_defaults(verbose=False, threads=5, retries=1, delay=0, timeout=30,
                           silent=False)
@@ -44,13 +45,11 @@ class XSSerOptions(optparse.OptionParser):
         self.add_option("-s", "--statistics",  action="store_true", dest="statistics", help="show advanced statistics output results")
         self.add_option("-v", "--verbose", action="store_true", dest="verbose", help="active verbose mode output results")
         self.add_option("--gtk", action="store_true", dest="xsser_gtk", help="launch XSSer GTK Interface")
-        #self.add_option("--swarm", action="store_true", dest="xsser_web", help="launch XSSer Swarm daemon(s) + Web-Shell")
         self.add_option("--wizard", action="store_true", dest="wizard", help="start Wizard Helper!")
 
         group1 = optparse.OptionGroup(self, "*Special Features*",
         "You can set Vector(s) and Bypasser(s) to build complex scripts for XSS code embedded. XST allows you to discover if target is vulnerable to 'Cross Site Tracing' [CAPEC-107]:")
-        group1.add_option("--imx", action="store", dest="imx", help="IMX - Create an image with XSS (--imx image.png)")
-        group1.add_option("--fla", action="store", dest="flash", help="FLA - Create a flash movie with XSS (--fla movie.swf)")
+        group1.add_option("--imx", action="store", dest="imx", help="IMX - Create an image with XSS (--imx image.svg)")
         group1.add_option("--xst", action="store", dest="xst", help="XST - Cross Site Tracing (--xst http(s)://host.com)")
         self.add_option_group(group1)
 
@@ -59,6 +58,7 @@ class XSSerOptions(optparse.OptionParser):
         group2.add_option("--all", action="store", dest="target", help="Automatically audit an entire target")
         group2.add_option("-u", "--url", action="store", dest="url", help="Enter target to audit") 
         group2.add_option("-i", action="store", dest="readfile", help="Read target(s) urls from file")
+        group2.add_option("-r", action="store", dest="reqfile", help="Load a raw HTTP request from a file")
         group2.add_option("-d", action="store", dest="dork", help="Search target(s) using a query (ex: 'news.php?id=')")
         group2.add_option("-l", action="store_true", dest="dork_file", help="Search from a list of 'dorks'")
         group2.add_option("--De", action="store", dest="dork_engine", help="Use this search engine (default: DuckDuckGo)")
@@ -86,8 +86,7 @@ class XSSerOptions(optparse.OptionParser):
         group4.add_option("--headers", action="store", dest="headers", help="Extra HTTP headers newline separated")
         group4.add_option("--auth-type", action="store", dest="atype", help="HTTP Authentication type (Basic, Digest, GSS or NTLM)") 
         group4.add_option("--auth-cred", action="store", dest="acred", help="HTTP Authentication credentials (name:password)")
-        #group4.add_option("--auth-cert", action="store", dest="acert", help="HTTP Authentication certificate (key_file,cert_file)")
-        group4.add_option("--check-tor", action="store_true", dest="checktor", help="Check to see if Tor is used properly")
+        group4.add_option("--auth-cert", action="store", dest="acert", help="HTTP Authentication certificate (key_file,cert_file)")
         group4.add_option("--proxy", action="store", dest="proxy", help="Use proxy server (tor: http://localhost:8118)")
         group4.add_option("--ignore-proxy", action="store_true", dest="ignoreproxy", help="Ignore system default HTTP proxy")
         group4.add_option("--timeout", action="store", dest="timeout", type="int", help="Select your timeout (default: 30)")
@@ -124,20 +123,19 @@ class XSSerOptions(optparse.OptionParser):
         self.add_option_group(group14)
 
         group13 = optparse.OptionGroup(self, "*Anti-antiXSS Firewall rules*",
-        "These options can be used to try to bypass specific WAF/IDS products and some anti-XSS browser filters. Choose only if required:")
-        group13.add_option("--Phpids0.6.5", action="store_true", dest="phpids065", help="PHPIDS (0.6.5) [ALL]")
-        group13.add_option("--Phpids0.7", action="store_true", dest="phpids070", help="PHPIDS (0.7) [ALL]")
-        group13.add_option("--Imperva", action="store_true", dest="imperva", help="Imperva Incapsula [ALL]")
-        group13.add_option("--Webknight", action="store_true", dest="webknight", help="WebKnight (4.1) [Chrome]")
-        group13.add_option("--F5bigip", action="store_true", dest="f5bigip", help="F5 Big IP [Chrome + FF + Opera]")
-        group13.add_option("--Barracuda", action="store_true", dest="barracuda", help="Barracuda WAF [ALL]")
-        group13.add_option("--Modsec", action="store_true", dest="modsec", help="Mod-Security [ALL]")
-        group13.add_option("--Quickdefense", action="store_true", dest="quickdefense", help="QuickDefense [Chrome]")
-        group13.add_option("--Sucuri", action="store_true", dest="sucuri", help="SucuriWAF [ALL]")
-        group13.add_option("--Firefox", action="store_true", dest="firefox", help="Firefox 12 [& below]")
-        group13.add_option("--Chrome", action="store_true", dest="chrome", help="Chrome 19 & Firefox 12 [& below]")
-        group13.add_option("--Opera", action="store_true", dest="opera", help="Opera 10.5 [& below]")
-        group13.add_option("--Iexplorer", action="store_true", dest="iexplorer", help="IExplorer 9 & Firefox 12 [& below]")
+        "These options can be used to try to bypass specific WAF/IDS products by wrapping the vector with per-product evasion. Choose only if required:")
+        group13.add_option("--Cloudflare", action="store_true", dest="cloudflare", help="Cloudflare WAF")
+        group13.add_option("--Akamai", action="store_true", dest="akamai", help="Akamai (Kona / App & API Protector)")
+        group13.add_option("--Awswaf", action="store_true", dest="awswaf", help="AWS WAF (Web Application Firewall)")
+        group13.add_option("--Azure", action="store_true", dest="azure", help="Azure Front Door WAF (DRS)")
+        group13.add_option("--Imperva", action="store_true", dest="imperva", help="Imperva (Incapsula / Cloud WAF)")
+        group13.add_option("--F5bigip", action="store_true", dest="f5bigip", help="F5 BIG-IP ASM / Advanced WAF")
+        group13.add_option("--Barracuda", action="store_true", dest="barracuda", help="Barracuda WAF")
+        group13.add_option("--Modsec", action="store_true", dest="modsec", help="Mod-Security + OWASP CRS v3")
+        group13.add_option("--Wordfence", action="store_true", dest="wordfence", help="Wordfence (WordPress WAF)")
+        group13.add_option("--Sucuri", action="store_true", dest="sucuri", help="Sucuri (CloudProxy) WAF")
+        group13.add_option("--Fortiweb", action="store_true", dest="fortiweb", help="Fortinet FortiWeb WAF")
+        group13.add_option("--Webknight", action="store_true", dest="webknight", help="AQTRONIX WebKnight WAF")
         self.add_option_group(group13)
        
         group7 = optparse.OptionGroup(self, "*Select Bypasser(s)*",
@@ -148,6 +146,12 @@ class XSSerOptions(optparse.OptionParser):
         group7.add_option("--Dec", action="store_true", dest="Dec", help="Use Decimal encoding")
         group7.add_option("--Hex", action="store_true", dest="Hex", help="Use Hexadecimal encoding")
         group7.add_option("--Hes", action="store_true", dest="Hes", help="Use Hexadecimal encoding with semicolons")
+        group7.add_option("--Dou", action="store_true", dest="Dou", help="Use Double URL encoding")
+        group7.add_option("--Ent", action="store_true", dest="Ent", help="Use HTML named entities encoding")
+        group7.add_option("--Cas", action="store_true", dest="Cas", help="Use mixed-Case mutation")
+        group7.add_option("--Uni", action="store_true", dest="Uni", help="Use JS Unicode escape (\\uXXXX)")
+        group7.add_option("--Xhx", action="store_true", dest="Xhx", help="Use JS Hexadecimal escape (\\xNN)")
+        group7.add_option("--Ocb", action="store_true", dest="Ocb", help="Use JS Octal escape (\\NNN)")
         group7.add_option("--Dwo", action="store_true", dest="Dwo", help="Encode IP addresses with DWORD")
         group7.add_option("--Doo", action="store_true", dest="Doo", help="Encode IP addresses with Octal")
         group7.add_option("--Cem", action="store", dest="Cem", help="Set different 'Character Encoding Mutations' (reversing obfuscators) (ex: 'Mix,Une,Str,Hex')")
@@ -180,19 +184,30 @@ class XSSerOptions(optparse.OptionParser):
         self.add_option_group(group10)
 
         group11 = optparse.OptionGroup(self, "*Reporting*")
-        group11.add_option("--save", action="store_true", dest="fileoutput", help="Export to file (XSSreport.raw)")
+        group11.add_option("--save", action="store_true", dest="fileoutput", help="Export to RAW (XSSreport.raw)")
         group11.add_option("--xml", action="store", dest="filexml", help="Export to XML (--xml file.xml)")
+        group11.add_option("--json", action="store", dest="filejson", help="Export to JSON (--json file.json)")
+        group11.add_option("--pdf", action="store", dest="filepdf", help="Export to PDF (--pdf report.pdf)")
         self.add_option_group(group11)
 
         group12 = optparse.OptionGroup(self, "*Miscellaneous*")
+        group12.add_option("--update", action="store_true", dest="update", help="Check for latest stable version")
+        group12.add_option("--check-tor", action="store_true", dest="checktor", help="Check to see if Tor is used properly")
         group12.add_option("--silent", action="store_true", dest="silent", help="Inhibit console output results")
         group12.add_option("--alive", action="store", dest="isalive", type="int", help="Set limit of errors before check if target is alive")
-        group12.add_option("--update", action="store_true", dest="update", help="Check for latest stable version")
+        group12.add_option("--debug", action="store_true", dest="debug", help="Run in debug mode (show tracebacks)")
         self.add_option_group(group12)
 
     def get_options(self, user_args=None):
         (options, args) = self.parse_args(user_args)
-        if (not options.url and not options.readfile and not options.dork and not options.dork_file and not options.imx and not options.flash and not options.update and not options.xsser_gtk and not options.wizard and not options.xst and not options.target and not options.checktor):
+        if (not options.url and not options.readfile and not options.dork and not options.dork_file and not options.imx and not options.update and not options.xsser_gtk and not options.wizard and not options.xst and not options.target and not options.checktor and not options.reqfile and not sys.stdin.isatty()):
+            piped = sys.stdin.read().strip() # stdin/pipe mode: cat urls.txt | xsser
+            if piped:
+                tmp = tempfile.NamedTemporaryFile(mode='w', prefix='xsser_stdin_', suffix='.txt', delete=False)
+                tmp.write(piped)
+                tmp.close()
+                options.readfile = tmp.name
+        if (not options.url and not options.readfile and not options.dork and not options.dork_file and not options.imx and not options.update and not options.xsser_gtk and not options.wizard and not options.xst and not options.target and not options.checktor and not options.reqfile):
             print("\n"+ '='*75)
             print(self.version)
             print("-----------", "\n")
@@ -205,7 +220,7 @@ class XSSerOptions(optparse.OptionParser):
             print("                              \\/ ( \033[1;31m@\033[1;m.\033[1;31m@\033[1;m)      * //\\//\\%                 %  %")
             print("                              || == < ==   * * \\//))//)  BBzzzzz!               ")
             print("Forum:                        ||]~~/ \\~~[ *    (())//))                         ")
-            print("irc.freenode.net -> #xsser    ||   (')          \\/())/                          ")
+            print("irc.libera.chat -> #xsser     ||   (')          \\/())/                          ")
             print("                              ||  /  /            \\/                            ")
             print("")
             print('='*75)

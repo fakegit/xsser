@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2019 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -69,5 +69,41 @@ heuristic_test = [
 		{ 'payload' : '''XSS&#34XSS''',
           'browser' : """[Heuristic test]""" },
 		{ 'payload' : """XSS&#61XSS""",
-		  'browser' : """[Heuristic test]""" }
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS`XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS(XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS)XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS{XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS}XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS:XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS%60XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS%28XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS%29XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS%7BXSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS%7DXSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS%3AXSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS&#96XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS&#40XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS&#41XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS&#123XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS&#125XSS""",
+		  'browser' : """[Heuristic test]""" },
+		{ 'payload' : """XSS&#58XSS""",
+		  'browser' : """[Heuristic test]""" },
 		]

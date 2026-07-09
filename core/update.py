@@ -4,7 +4,7 @@
 """
 This file is part of the XSSer project, https://xsser.03c8.net
 
-Copyright (c) 2010/2020 | psy <epsylon@riseup.net>
+Copyright (c) 2010/2026 | psy <epsylon@riseup.net>
 
 xsser is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -30,7 +30,6 @@ class Updater(object):
     def __init__(self):
         GIT_REPOSITORY = "https://code.03c8.net/epsylon/xsser"
         GIT_REPOSITORY2 = "https://github.com/epsylon/xsser"
-        rootDir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', ''))
         if not os.path.exists(".git"):
             print("Not any .git repository found!\n")
             print("="*30)
@@ -41,7 +40,7 @@ class Updater(object):
         else:
             checkout = execute("git checkout . && git pull", shell=True, stdout=PIPE, stderr=PIPE).communicate()[0]
             print("[Info] [GitHub] Reply:\n\n"+checkout.decode('utf-8'))
-            if not b"Already up-to-date" in checkout:
-                print("[Info] [AI] Congratulations!! XSSer has been updated... ;-)\n")
+            if b"Already up to date" not in checkout and b"Already up-to-date" not in checkout:
+                print("[Info] Congratulations!! XSSer has been updated... ;-)\n")
             else:
-                print("[Info] [AI] Your XSSer doesn't need to be updated... ;-)\n")
+                print("[Info] Your XSSer doesn't need to be updated... ;-)\n")

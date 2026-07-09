@@ -4,7 +4,7 @@
                                                                     `.`                   ..              
             Welcome to XSSer ....                       `-:`              .-`               
                                                                         `/-     -      +`                                        
-                                                                          o     +      /                                  v1.8[4] -> "The Hiv€!"
+                                                                          o     +      /                                  v1.9 -> "Bl4ck Swarm!"
                                                                           ./   -Ny    /.                                         
                                                              `::-`       :--yMN:--.      `.....                      
                                          `mMMMMMmdhysoooosMyoo+oyhdmNMMMMMMMs       
@@ -16,7 +16,7 @@
                                                                   .::`     h`  o-  o.    :+.                       
                        GPLv3                                .--.        :o      y       :/.          
                                                                ``            h      .s         -:.        
-                                                                              :/       o.          ``                2010/2021 - by psy
+                                                                              :/       o.          ``                2010/2026 - by psy
                                                                             .o         o                   
                                                                              o          ./                  
                                                                             +`           :.                 
@@ -57,22 +57,20 @@
 
       ----------
 
-      XSSer has pre-installed [ > 1300 XSS ] attacking vectors and can bypass-exploit code on several browsers/WAFs:
+      XSSer has pre-installed [ > 1400 XSS ] attacking vectors and can bypass-exploit code on several WAFs:
 
-        - [PHPIDS]: PHP-IDS
-        - [Imperva]: Imperva Incapsula WAF
-        - [WebKnight]: WebKnight WAF
-        - [F5]: F5 Big IP WAF
+        - [Cloudflare]: Cloudflare WAF
+        - [Akamai]: Akamai (Kona / App & API Protector)
+        - [AWS]: AWS WAF
+        - [Azure]: Azure Front Door WAF
+        - [Imperva]: Imperva (Incapsula / Cloud WAF)
+        - [F5]: F5 BIG-IP ASM / Advanced WAF
         - [Barracuda]: Barracuda WAF
-        - [ModSec]: Mod-Security
-        - [QuickDF]: QuickDefense
-        - [Sucuri]: SucuriWAF
-        - [Chrome]: Google Chrome
-        - [IE]: Internet Explorer
-        - [FF]: Mozilla's Gecko rendering engine, used by Firefox/Iceweasel
-        - [NS-IE]: Netscape in IE rendering engine mode   
-        - [NS-G]: Netscape in the Gecko rendering engine mode
-        - [Opera]: Opera Browser
+        - [ModSec]: Mod-Security + OWASP CRS v3
+        - [Wordfence]: Wordfence (WordPress)
+        - [Sucuri]: Sucuri (CloudProxy)
+        - [FortiWeb]: Fortinet FortiWeb
+        - [WebKnight]: AQTRONIX WebKnight
 
     ====================================
     Documentation:
@@ -129,5 +127,5 @@
     Community:
     ===================
 
-      You can FREE JOIN! #xsser community on: irc.freenode.net
+      You can FREE JOIN! #xsser community on: irc.libera.chat
 
